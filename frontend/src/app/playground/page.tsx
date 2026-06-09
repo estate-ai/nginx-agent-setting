@@ -1,18 +1,24 @@
 // src/app/playground/page.tsx
-// Server Component 예시:
-// 1) 현재 요청의 cookie로 Better Auth token endpoint 호출 → JWT 발급
-// 2) 그 JWT로 nginx gateway(/api/profile, /api/echo) 호출
-//
-// Better Auth JWT plugin: /api/auth/token, /api/auth/jwks
-// https://better-auth.com/docs/plugins/jwt
+import { Suspense } from "react"
 import { headers } from "next/headers"
+import { ErrorBoundary } from "react-error-boundary"
+import {
+  HydrationBoundary,
+  QueryClient,
+  dehydrate,
+} from "@tanstack/react-query"
 import { getServerSession } from "@/features/auth/lib/server-session"
-import PlaygroundClient from "./_components/playground-client"
+import { prefetchEcho } from "@/features/playground/api/get-echo.server"
+import { prefetchProfile } from "@/features/playground/api/get-profile.server"
+import PlaygroundClient from "@/features/playground/components/playground-client"
+import {
+  PlaygroundErrorFallback,
+  PlaygroundSuspenseFallback,
+} from "@/features/playground/components/playground-fallback"
 
 export const dynamic = "force-dynamic"
 
 type JsonObject = Record<string, unknown>
-type GatewayResult = { ok: boolean; status: number; data: unknown }
 
 const GATEWAY_BASE =
   process.env.GATEWAY_BASE_URL ??
@@ -51,7 +57,7 @@ const issueJwtFromCookie = async (): Promise<string | null> => {
 
   const res = await fetch(`${AUTH_BASE}/api/auth/token`, {
     method: "GET",
-    headers: { cookie }, // ✅ 서버에서 세션 쿠키 전달
+    headers: { cookie },
     cache: "no-store",
   })
 
@@ -62,37 +68,39 @@ const issueJwtFromCookie = async (): Promise<string | null> => {
   return getTokenFromUnknown(json)
 }
 
-const fetchGateway = async (path: string, jwt: string): Promise<GatewayResult> => {
-  const res = await fetch(`${GATEWAY_BASE}${path}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${jwt}`, // ✅ nginx로 JWT 전달
-    },
-    cache: "no-store",
-  })
-
-  const text = await res.text()
-  return { ok: res.ok, status: res.status, data: parseJsonSafe(text) }
-}
-
 export default async function PlaygroundPage() {
   const session = await getServerSession()
   const jwt = await issueJwtFromCookie()
 
-  const serverProfile: GatewayResult | null = jwt
-    ? await fetchGateway("/api/profile/me", jwt)
-    : null
+  const queryClient = new QueryClient()
 
-  const serverEcho: GatewayResult | null = jwt
-    ? await fetchGateway("/api/echo/echo", jwt)
+  // 서버 사이드에서 데이터 미리 패칭 (prefetch)
+  if (jwt) {
+    await Promise.all([
+      prefetchProfile(queryClient, GATEWAY_BASE, jwt),
+      prefetchEcho(queryClient, GATEWAY_BASE, jwt),
+    ])
+  }
+
+  const dehydratedState = dehydrate(queryClient)
+
+  // SSR 단계에서 서버용 캐시값을 꺼내 확인용 UI에 렌더링
+  const serverProfile = jwt
+    ? queryClient.getQueryData(["profile", GATEWAY_BASE])
+    : null
+  const serverEcho = jwt
+    ? queryClient.getQueryData(["echo", GATEWAY_BASE])
     : null
 
   return (
     <main>
-      <h1>/playground</h1>
+      <div>
+        <h1>/playground</h1>
+        <p>서버 측 Shell (SSR)</p>
+      </div>
 
       <section>
-        <h2>Server</h2>
+        <h2>서버 측 환경 변수 및 상태</h2>
         <div>
           GATEWAY_BASE: <code>{GATEWAY_BASE}</code>
         </div>
@@ -100,20 +108,29 @@ export default async function PlaygroundPage() {
           AUTH_BASE: <code>{AUTH_BASE}</code>
         </div>
 
-        <h3>Session (server)</h3>
+        <h3>서버 세션</h3>
         <pre>{JSON.stringify(session ?? null, null, 2)}</pre>
 
-        <h3>JWT issued on server</h3>
-        <pre>{jwt ? `${jwt.slice(0, 32)}…` : "NO_JWT (login first)"}</pre>
+        <h3>서버에서 발급받은 JWT</h3>
+        <pre>
+          {jwt ? `${jwt.slice(0, 32)}…` : "토큰 없음 (로그인이 필요합니다)"}
+        </pre>
 
-        <h3>Call profile-service via nginx (server)</h3>
+        <h3>프리페치된 Profile 데이터 (서버 캐시)</h3>
         <pre>{JSON.stringify(serverProfile, null, 2)}</pre>
 
-        <h3>Call echo-service → profile-service via nginx (server)</h3>
+        <h3>프리페치된 Echo 데이터 (서버 캐시)</h3>
         <pre>{JSON.stringify(serverEcho, null, 2)}</pre>
       </section>
 
-      <PlaygroundClient gatewayBase={GATEWAY_BASE} />
+      {/* 클라이언트 컴포넌트는 HydrationBoundary와 Suspense로 감싸서 분리 */}
+      <ErrorBoundary FallbackComponent={PlaygroundErrorFallback}>
+        <Suspense fallback={<PlaygroundSuspenseFallback />}>
+          <HydrationBoundary state={dehydratedState}>
+            <PlaygroundClient gatewayBase={GATEWAY_BASE} serverJwt={jwt} />
+          </HydrationBoundary>
+        </Suspense>
+      </ErrorBoundary>
     </main>
   )
 }

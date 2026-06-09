@@ -28,7 +28,7 @@ http://localhost:3000/api/auth/callback/google 를 승인된 리다이렉트 uri
 
 ## Coding Convention
 
-- **Naming**: 파일 및 폴더명은 `kebab-case`를 사용합니다.
+- **Naming**: 파일 및 폴더명은 `kebab-case`를 사용합니다. (예: `get-echo.server.ts` 처럼 마침표(`.`) 포함 가능)
 - **Functions**: 라우트 핸들러, 리액트 컴포넌트, 커스텀 훅을 제외한 일반 유틸/헬퍼 함수는 화살표 함수(`const = () =>`)를 사용합니다.
 - **Types**: `interface` 대신 `type` 키워드를 사용한 객체 타입을 선호합니다.
 - **Next.js Props**: `params`나 `searchParams`를 직접 타이핑하지 않고, Next.js의 Route-aware Type Helper(`PageProps`, `LayoutProps` 등) 사용을 선호합니다.
