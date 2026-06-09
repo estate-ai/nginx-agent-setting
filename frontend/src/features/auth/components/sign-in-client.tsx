@@ -7,8 +7,8 @@
 //
 // signIn.social의 callbackURL / errorCallbackURL 옵션은 Basic Usage 문서에 명시.
 // https://better-auth.com/docs/basic-usage :contentReference[oaicite:42]{index=42}
-
 import { authClient } from "@/features/auth/lib/auth-client"
+import { Button } from "@/shared/components/ui/button"
 
 export default function SignInClient({
   callbackURL,
@@ -18,28 +18,22 @@ export default function SignInClient({
   error?: string
 }) {
   return (
-    <div style={{ display: "grid", gap: 12, maxWidth: 420 }}>
-      {error ? (
-        <div style={{ padding: 12, background: "#ffecec" }}>
-          Error: {error}
-        </div>
-      ) : null}
+    <div>
+      {error ? <div>Error: {error}</div> : null}
 
-      <button
+      <Button
         onClick={async () => {
           await authClient.signIn.social({
             provider: "google",
             callbackURL,
             errorCallbackURL: "/sign-in?error=oauth",
           })
-          // disableRedirect 기본값은 false라서(문서) 보통 여기서 provider로 자동 이동합니다.
-          // https://better-auth.com/docs/basic-usage :contentReference[oaicite:43]{index=43}
         }}
       >
         Continue with Google
-      </button>
+      </Button>
 
-      <div style={{ fontSize: 12, opacity: 0.7 }}>
+      <div>
         callbackURL: <code>{callbackURL}</code>
       </div>
     </div>

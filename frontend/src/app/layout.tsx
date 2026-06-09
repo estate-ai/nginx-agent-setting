@@ -1,15 +1,16 @@
 // src/app/layout.tsx
 import type { ReactNode } from "react"
 import UserNav from "@/features/auth/components/user-nav"
+import "./globals.css"
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko">
       <body>
-        <div style={{ padding: 16, borderBottom: "1px solid #eee" }}>
+        <div>
           <UserNav />
         </div>
-        <div style={{ padding: 16 }}>{children}</div>
+        <div>{children}</div>
       </body>
     </html>
   )

@@ -1,7 +1,6 @@
 // src/app/dashboard/page.tsx
 // Better Auth 문서의 “페이지/라우트마다 auth.api.getSession으로 검증” 예시 그대로.
 // https://better-auth.com/docs/integrations/next :contentReference[oaicite:40]{index=40}
-
 import { redirect } from "next/navigation"
 import { getServerSession } from "@/features/auth/lib/server-session"
 
@@ -17,9 +16,7 @@ export default async function DashboardPage() {
       <p>
         Welcome, <b>{session.user.name}</b>
       </p>
-      <pre style={{ padding: 12, background: "#f7f7f7" }}>
-        {JSON.stringify(session, null, 2)}
-      </pre>
+      <pre>{JSON.stringify(session, null, 2)}</pre>
     </main>
   )
 }

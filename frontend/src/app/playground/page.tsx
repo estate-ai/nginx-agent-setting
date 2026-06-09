@@ -5,10 +5,9 @@
 //
 // Better Auth JWT plugin: /api/auth/token, /api/auth/jwks
 // https://better-auth.com/docs/plugins/jwt
-
-import PlaygroundClient from "./_components/playground-client"
 import { headers } from "next/headers"
 import { getServerSession } from "@/features/auth/lib/server-session"
+import PlaygroundClient from "./_components/playground-client"
 
 export const dynamic = "force-dynamic"
 
@@ -89,37 +88,29 @@ export default async function PlaygroundPage() {
     : null
 
   return (
-    <main style={{ display: "grid", gap: 16 }}>
+    <main>
       <h1>/playground</h1>
 
-      <section style={{ padding: 12, border: "1px solid #eee" }}>
+      <section>
         <h2>Server</h2>
-        <div style={{ fontSize: 12, opacity: 0.8 }}>
+        <div>
           GATEWAY_BASE: <code>{GATEWAY_BASE}</code>
         </div>
-        <div style={{ fontSize: 12, opacity: 0.8 }}>
+        <div>
           AUTH_BASE: <code>{AUTH_BASE}</code>
         </div>
 
         <h3>Session (server)</h3>
-        <pre style={{ padding: 12, background: "#f7f7f7", overflow: "auto" }}>
-          {JSON.stringify(session ?? null, null, 2)}
-        </pre>
+        <pre>{JSON.stringify(session ?? null, null, 2)}</pre>
 
         <h3>JWT issued on server</h3>
-        <pre style={{ padding: 12, background: "#f7f7f7", overflow: "auto" }}>
-          {jwt ? `${jwt.slice(0, 32)}…` : "NO_JWT (login first)"}
-        </pre>
+        <pre>{jwt ? `${jwt.slice(0, 32)}…` : "NO_JWT (login first)"}</pre>
 
         <h3>Call profile-service via nginx (server)</h3>
-        <pre style={{ padding: 12, background: "#f7f7f7", overflow: "auto" }}>
-          {JSON.stringify(serverProfile, null, 2)}
-        </pre>
+        <pre>{JSON.stringify(serverProfile, null, 2)}</pre>
 
         <h3>Call echo-service → profile-service via nginx (server)</h3>
-        <pre style={{ padding: 12, background: "#f7f7f7", overflow: "auto" }}>
-          {JSON.stringify(serverEcho, null, 2)}
-        </pre>
+        <pre>{JSON.stringify(serverEcho, null, 2)}</pre>
       </section>
 
       <PlaygroundClient gatewayBase={GATEWAY_BASE} />

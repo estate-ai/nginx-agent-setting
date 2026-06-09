@@ -7,9 +7,8 @@
 //
 // useSession은 reactive hook으로 공식 제공.
 // https://better-auth.com/docs/basic-usage :contentReference[oaicite:27]{index=27}
-
-import { createAuthClient } from "better-auth/react"
 import { jwtClient } from "better-auth/client/plugins"
+import { createAuthClient } from "better-auth/react"
 
 export const authClient = createAuthClient({
   plugins: [jwtClient()],

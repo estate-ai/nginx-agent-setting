@@ -3,7 +3,6 @@
 // https://better-auth.com/docs/integrations/next :contentReference[oaicite:28]{index=28}
 // auth.api 개념 문서도 동일 패턴을 안내합니다.
 // https://better-auth.com/docs/concepts/api :contentReference[oaicite:29]{index=29}
-
 import { headers } from "next/headers"
 import { auth } from "./auth"
 

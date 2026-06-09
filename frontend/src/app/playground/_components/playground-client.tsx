@@ -6,9 +6,16 @@
 //
 // Better Auth JWT client plugin: authClient.token()
 // https://better-auth.com/docs/plugins/jwt
-
 import { useState } from "react"
 import { authClient } from "@/features/auth/lib/auth-client"
+import { Button } from "@/shared/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/shared/components/ui/card"
 
 type JsonObject = Record<string, unknown>
 type GatewayResult = { ok: boolean; status: number; data: unknown }
@@ -46,7 +53,11 @@ async function callGateway(url: string, jwt: string): Promise<GatewayResult> {
   return { ok: res.ok, status: res.status, data: parseJsonSafe(text) }
 }
 
-export default function PlaygroundClient({ gatewayBase }: { gatewayBase: string }) {
+export default function PlaygroundClient({
+  gatewayBase,
+}: {
+  gatewayBase: string
+}) {
   const { data: session, isPending } = authClient.useSession()
 
   const [jwtPreview, setJwtPreview] = useState<string>("")
@@ -57,86 +68,94 @@ export default function PlaygroundClient({ gatewayBase }: { gatewayBase: string 
   async function issueJwtClient(): Promise<string | null> {
     const tokenResult = await authClient.token()
     // tokenResult.data 타입이 라이브러리 버전에 따라 달라져서 안전하게 unknown로 처리
-    const token = getTokenFromUnknown((tokenResult as unknown as { data?: unknown }).data)
+    const token = getTokenFromUnknown(
+      (tokenResult as unknown as { data?: unknown }).data
+    )
     return token
   }
 
   return (
-    <section style={{ padding: 12, border: "1px solid #eee" }}>
-      <h2>Client</h2>
-      <div style={{ fontSize: 12, opacity: 0.8 }}>
-        Calling: <code>{gatewayBase}</code> (CORS handled by nginx)
-      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Client</CardTitle>
+        <CardDescription>
+          Calling: <code>{gatewayBase}</code> (CORS handled by nginx)
+        </CardDescription>
+      </CardHeader>
 
-      <h3>Session (client)</h3>
-      <pre style={{ padding: 12, background: "#f7f7f7", overflow: "auto" }}>
-        {isPending ? "Loading..." : JSON.stringify(session ?? null, null, 2)}
-      </pre>
-
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button
-          onClick={async () => {
-            setError("")
-            setProfile(null)
-            setEcho(null)
-
-            const token = await issueJwtClient()
-            if (!token) {
-              setJwtPreview("")
-              setError("FAILED_TO_ISSUE_JWT (login first)")
-              return
-            }
-            setJwtPreview(`${token.slice(0, 32)}…`)
-          }}
-        >
-          1) Issue JWT (client)
-        </button>
-
-        <button
-          onClick={async () => {
-            setError("")
-            const token = await issueJwtClient()
-            if (!token) return setError("NO_JWT (login first)")
-
-            setProfile(await callGateway(`${gatewayBase}/api/profile/me`, token))
-          }}
-        >
-          2) Call /api/profile/me
-        </button>
-
-        <button
-          onClick={async () => {
-            setError("")
-            const token = await issueJwtClient()
-            if (!token) return setError("NO_JWT (login first)")
-
-            setEcho(await callGateway(`${gatewayBase}/api/echo/echo`, token))
-          }}
-        >
-          3) Call /api/echo/echo
-        </button>
-      </div>
-
-      {error ? (
-        <div style={{ marginTop: 12, padding: 12, background: "#ffecec" }}>
-          {error}
+      <CardContent className="flex flex-col gap-4">
+        <div>
+          <h3>Session (client)</h3>
+          <pre>
+            {isPending
+              ? "Loading..."
+              : JSON.stringify(session ?? null, null, 2)}
+          </pre>
         </div>
-      ) : null}
 
-      <h3>JWT preview</h3>
-      <pre style={{ padding: 12, background: "#f7f7f7", overflow: "auto" }}>
-        {jwtPreview || "—"}
-      </pre>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={async () => {
+              setError("")
+              setProfile(null)
+              setEcho(null)
 
-      <h3>profile response</h3>
-      <pre style={{ padding: 12, background: "#f7f7f7", overflow: "auto" }}>
-        {JSON.stringify(profile, null, 2)}
-      </pre>
+              const token = await issueJwtClient()
+              if (!token) {
+                setJwtPreview("")
+                setError("FAILED_TO_ISSUE_JWT (login first)")
+                return
+              }
+              setJwtPreview(`${token.slice(0, 32)}…`)
+            }}
+          >
+            1) Issue JWT (client)
+          </Button>
 
-      <h3>echo response</h3>
-      <pre style={{ padding: 12, background: "#f7f7f7", overflow: "auto" }}>
-        {JSON.stringify(echo, null, 2)}
-      </pre>
-    </section>
+          <Button
+            onClick={async () => {
+              setError("")
+              const token = await issueJwtClient()
+              if (!token) return setError("NO_JWT (login first)")
+
+              setProfile(
+                await callGateway(`${gatewayBase}/api/profile/me`, token)
+              )
+            }}
+          >
+            2) Call /api/profile/me
+          </Button>
+
+          <Button
+            onClick={async () => {
+              setError("")
+              const token = await issueJwtClient()
+              if (!token) return setError("NO_JWT (login first)")
+
+              setEcho(await callGateway(`${gatewayBase}/api/echo/echo`, token))
+            }}
+          >
+            3) Call /api/echo/echo
+          </Button>
+        </div>
+
+        {error ? <div>{error}</div> : null}
+
+        <div>
+          <h3>JWT preview</h3>
+          <pre>{jwtPreview || "—"}</pre>
+        </div>
+
+        <div>
+          <h3>profile response</h3>
+          <pre>{JSON.stringify(profile, null, 2)}</pre>
+        </div>
+
+        <div>
+          <h3>echo response</h3>
+          <pre>{JSON.stringify(echo, null, 2)}</pre>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

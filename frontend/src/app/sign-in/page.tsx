@@ -14,7 +14,11 @@ export default function SignInPage({
   )
 }
 
-async function SignInClientWrapper({ searchParams }: { searchParams?: Promise<{ callbackURL?: string; error?: string }> }) {
+async function SignInClientWrapper({
+  searchParams,
+}: {
+  searchParams?: Promise<{ callbackURL?: string; error?: string }>
+}) {
   const params = await searchParams
   return (
     <SignInClient
