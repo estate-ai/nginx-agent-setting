@@ -52,10 +52,21 @@ export function LangGraphChatStreamProvider({
 }: LangGraphChatStreamProviderProps) {
   const [threadId, setThreadId] = useState<string | null>(null)
   const [localNotice, setLocalNotice] = useState<string | null>(null)
+
+  const apiUrl = useMemo(() => {
+    const AGENT_PROXY_PATH = "/api/proxy/agent"
+    const origin =
+      process.env.NEXT_PUBLIC_APP_ORIGIN ??
+      (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000")
+
+    // SDK가 URL 생성자를 쓰므로 상대경로 대신 절대 URL을 넘긴다.
+    return new URL(AGENT_PROXY_PATH, origin).toString()
+  }, [])
+
   const stream = useStream<LlmChatGraphState, LlmChatStreamBag>({
     // LangGraph SDK는 브라우저에서 직접 Agent Server native API를 호출합니다.
     // 실제 JWT는 /api/proxy/agent BFF 경계에서 Better Auth 토큰으로 교체됩니다.
-    apiUrl: "/api/proxy/agent",
+    apiUrl,
     apiKey: null,
     assistantId: "chat",
     callerOptions: {
@@ -94,18 +105,15 @@ export function LangGraphChatStreamProvider({
         options.toolPolicy
       )
       // 기존 FastAPI adapter가 해주던 context -> state 복사를 native Agent Server 입력에서 직접 맞춥니다.
-      const input = buildSubmitInput(trimmed, context)
+      const input = buildSubmitInput(trimmed)
       const optimisticMessage = input.messages[0]
 
       await stream.submit(input, {
-        config: {
-          configurable: context,
-        },
         context,
         streamMode: [...DEFAULT_LANGGRAPH_STREAM_MODE],
         streamResumable: true,
         optimisticValues: (previous) => ({
-          messages: [...(previous.messages ?? []), optimisticMessage],
+          messages: [...(previous?.messages ?? []), optimisticMessage],
         }),
       })
     },

@@ -3,6 +3,7 @@ from typing import Any, cast
 from langchain_core.messages import AIMessage, AnyMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.prebuilt import ToolNode
+from langgraph.runtime import Runtime
 from langgraph.types import Command, interrupt
 
 from agent.services.chat.approvals.messages import (
@@ -20,6 +21,7 @@ from agent.services.chat.approvals.policy import (
     requires_approval,
 )
 from agent.services.chat.approvals.schemas import ApprovalDecision, ApprovalInterruptPayload, ApprovalResumePayload
+from agent.services.chat.context import ChatRuntimeContext
 from agent.services.chat.state import ChatState
 from agent.services.chat.tools import ChatToolError
 from agent.services.chat.toolkits.chat_toolkit import CHAT_TOOLS
@@ -34,15 +36,19 @@ def _handle_chat_tool_error(error: Exception) -> str:
 _tool_node = ToolNode(CHAT_TOOLS, handle_tool_errors=_handle_chat_tool_error)
 
 
-def approval_gate(state: ChatState) -> Command[Any]:
+def approval_gate(
+    state: ChatState,
+    runtime: Runtime[ChatRuntimeContext],
+) -> Command[Any]:
     """최신 tool call에 사용자 승인이 필요하면 graph를 일시 중단합니다."""
 
     ai_message = get_latest_ai_message_with_tool_calls(list(state["messages"]))
     if ai_message is None:
         return Command(goto="tools")
 
-    allowed_tools = state.get("allowed_tools", default_allowed_tools())
-    interrupt_on = state.get("interrupt_on", {})
+    context = runtime.context
+    allowed_tools = context.get("allowed_tools", default_allowed_tools())
+    interrupt_on = context.get("interrupt_on", {})
     action_requests = []
     review_configs = []
 
@@ -84,8 +90,6 @@ def approval_gate(state: ChatState) -> Command[Any]:
     return Command(
         update={
             "tool_approval_decisions": resume_payload.get("decisions", []),
-            "allowed_tools": allowed_tools,
-            "interrupt_on": interrupt_on,
         },
         goto="tools",
     )
@@ -94,6 +98,7 @@ def approval_gate(state: ChatState) -> Command[Any]:
 async def call_tools_with_approval(
     state: ChatState,
     config: RunnableConfig,
+    runtime: Runtime[ChatRuntimeContext],
 ) -> dict[str, list[AnyMessage] | list[ApprovalDecision]]:
     """승인된 tool call을 실행하고 reject/respond 결정은 ToolMessage로 합성합니다.
 
@@ -106,8 +111,9 @@ async def call_tools_with_approval(
     if ai_message is None:
         return {"messages": [], "tool_approval_decisions": []}
 
-    allowed_tools = state.get("allowed_tools", default_allowed_tools())
-    interrupt_on = state.get("interrupt_on", {})
+    context = runtime.context
+    allowed_tools = context.get("allowed_tools", default_allowed_tools())
+    interrupt_on = context.get("interrupt_on", {})
     decisions = state.get("tool_approval_decisions", [])
     executable_calls: list[dict[str, Any]] = []
     synthetic_messages_by_id: dict[str, ToolMessage] = {}

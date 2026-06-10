@@ -4,9 +4,11 @@ WORKDIR /app
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    LANGGRAPH_CLI_NO_ANALYTICS=1
+    LANGGRAPH_CLI_NO_ANALYTICS=1 \
+    PYTHONPATH=/app
 
 COPY pyproject.toml langgraph.json README.md Makefile ./
+COPY sitecustomize.py ./sitecustomize.py
 COPY src ./src
 COPY evals ./evals
 COPY scripts ./scripts

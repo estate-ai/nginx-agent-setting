@@ -3,8 +3,7 @@ from typing import Annotated, NotRequired, TypedDict
 from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
 
-from agent.services.chat.approvals.schemas import ApprovalDecision, InterruptOnConfig
-from agent.schemas.chat import ReasoningEffort
+from agent.services.chat.approvals.schemas import ApprovalDecision
 
 
 class ChatState(TypedDict):
@@ -16,8 +15,4 @@ class ChatState(TypedDict):
     """
 
     messages: Annotated[list[AnyMessage], add_messages]
-    model: str
-    reasoning_effort: ReasoningEffort
-    allowed_tools: NotRequired[list[str]]
-    interrupt_on: NotRequired[InterruptOnConfig]
     tool_approval_decisions: NotRequired[list[ApprovalDecision]]

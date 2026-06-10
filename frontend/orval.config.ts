@@ -1,4 +1,9 @@
-import { type Config, type Options, defineConfig } from "orval"
+import {
+  type Config,
+  type Options,
+  type SchemaGenerationType,
+  defineConfig,
+} from "orval"
 
 const OPENAPI_GATEWAY_ORIGIN =
   process.env.OPENAPI_GATEWAY_ORIGIN ?? "http://localhost:8080"
@@ -9,10 +14,12 @@ const createProject = ({
   name,
   inputPath,
   runtimeBasePath,
+  schemasType = "zod",
 }: {
   name: string
   inputPath: string
   runtimeBasePath: string
+  schemasType?: SchemaGenerationType
 }): Options => {
   return {
     input: {
@@ -23,7 +30,7 @@ const createProject = ({
       target: `${GENERATED_ROOT}/${name}/endpoints`,
       schemas: {
         path: `${GENERATED_ROOT}/${name}/schemas`,
-        type: "zod",
+        type: schemasType,
       },
       client: "react-query",
       httpClient: "fetch",
@@ -79,6 +86,7 @@ export default defineConfig((): Config => {
       name: "agent",
       inputPath: "/api/agent/openapi.json",
       runtimeBasePath: "/api/proxy/agent",
+      schemasType: "typescript",
     }),
   }
 })

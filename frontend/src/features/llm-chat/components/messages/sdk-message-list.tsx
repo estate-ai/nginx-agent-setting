@@ -30,11 +30,7 @@ export function SdkMessageList({
   }, [lastMessageId, scrollToBottom, children])
 
   return (
-    <ScrollArea
-      className="h-full"
-      viewportRef={viewportRef}
-      onScroll={onScroll}
-    >
+    <ScrollArea className="h-full" ref={viewportRef} onScroll={onScroll}>
       <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6">
         {messages.map((message, index) => {
           const isLastMessage = index === messages.length - 1
