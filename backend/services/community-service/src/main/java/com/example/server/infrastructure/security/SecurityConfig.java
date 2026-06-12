@@ -1,16 +1,23 @@
 package com.example.server.infrastructure.security;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.Collection;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpHeaders;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -33,6 +40,9 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
+    private static final String API_PATH_PATTERN = "/api/**";
+
+    private final ObjectMapper objectMapper;
 
 
     @Bean // NOTE: [Spring Security] 보안 필터 체인 빈 등록
@@ -62,7 +72,7 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .defaultAuthenticationEntryPointFor(
                                 apiAuthenticationEntryPoint(),
-                                PathPatternRequestMatcher.withDefaults().matcher("/api/**")
+                                PathPatternRequestMatcher.withDefaults().matcher(API_PATH_PATTERN)
                         )
                         .defaultAccessDeniedHandlerFor(
                                 (request, response, accessDeniedException) -> {
@@ -71,13 +81,14 @@ public class SecurityConfig {
                                             request.getMethod(),
                                             request.getRequestURI()
                                     );
-                                    writeJsonError(
+                                    writeProblemDetail(
+                                            request,
                                             response,
-                                            HttpServletResponse.SC_FORBIDDEN,
+                                            HttpStatus.FORBIDDEN,
                                             "접근 권한이 없습니다."
                                     );
                                 },
-                                PathPatternRequestMatcher.withDefaults().matcher("/api/**")
+                                PathPatternRequestMatcher.withDefaults().matcher(API_PATH_PATTERN)
                         )
                 )
 
@@ -123,24 +134,28 @@ public class SecurityConfig {
                     request.getMethod(),
                     request.getRequestURI()
             );
-            writeJsonError(
+            response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
+            writeProblemDetail(
+                    request,
                     response,
-                    HttpServletResponse.SC_UNAUTHORIZED,
+                    HttpStatus.UNAUTHORIZED,
                     "로그인이 필요합니다."
             );
         };
     }
 
-    private void writeJsonError(
+    private void writeProblemDetail(
+            HttpServletRequest request,
             HttpServletResponse response,
-            int status,
+            HttpStatus status,
             String message
     ) throws IOException {
-        response.setStatus(status);
-        response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write(
-                "{\"status\":" + status + ",\"message\":\"" + message + "\"}"
-        );
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, message);
+        problemDetail.setInstance(URI.create(request.getRequestURI()));
+
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        objectMapper.writeValue(response.getOutputStream(), problemDetail);
     }
 
 

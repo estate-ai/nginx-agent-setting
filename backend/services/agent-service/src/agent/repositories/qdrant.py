@@ -25,14 +25,18 @@ def get_qdrant_distance() -> models.Distance:
     try:
         return mapping[normalized]
     except KeyError as error:
-        raise ValueError(f"지원하지 않는 Qdrant distance입니다: {settings.qdrant_distance}") from error
+        raise ValueError(
+            f"지원하지 않는 Qdrant distance입니다: {settings.qdrant_distance}"
+        ) from error
 
 
 class QdrantRagRepository:
     def __init__(self, client: Any) -> None:
         self._client = client
 
-    async def upsert_point(self, *, point_id: str, vector: list[float], payload: dict[str, object]) -> None:
+    async def upsert_point(
+        self, *, point_id: str, vector: list[float], payload: dict[str, object]
+    ) -> None:
         # named vector를 쓰면 이후 같은 point에 다른 vector 종류를 추가할 여지를 남길 수 있습니다.
         point = models.PointStruct(
             id=point_id,
@@ -82,7 +86,9 @@ class QdrantRagRepository:
             raise VectorStoreError("Qdrant에서 vector를 조회하지 못했습니다.") from error
 
         if not records:
-            raise VectorPointNotFoundError(f"색인된 vector point를 찾을 수 없습니다. pointId={point_id}")
+            raise VectorPointNotFoundError(
+                f"색인된 vector point를 찾을 수 없습니다. pointId={point_id}"
+            )
 
         vector = records[0].vector
         if isinstance(vector, dict):
@@ -117,7 +123,9 @@ class QdrantRagRepository:
 
         points: list[VectorSearchPoint] = []
         for point in response.points:
-            points.append(VectorSearchPoint(payload=dict(point.payload or {}), score=float(point.score)))
+            points.append(
+                VectorSearchPoint(payload=dict(point.payload or {}), score=float(point.score))
+            )
         return points
 
 

@@ -6,7 +6,11 @@ from agent.services.chat.graph import chat_graph
 
 pytestmark = pytest.mark.anyio
 
-if not (os.getenv("OLLAMA_API_KEY") or os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENCODE_ZEN_API_KEY")):
+if not (
+    os.getenv("OLLAMA_API_KEY")
+    or os.getenv("OPENROUTER_API_KEY")
+    or os.getenv("OPENCODE_ZEN_API_KEY")
+):
     pytest.skip("Set a chat provider API key to run integration tests.", allow_module_level=True)
 
 

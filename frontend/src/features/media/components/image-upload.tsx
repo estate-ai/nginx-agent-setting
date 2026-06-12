@@ -5,7 +5,7 @@ import { useUploadMediaAttachment } from "@/shared/api/generated/community/endpo
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { toast } from "sonner";
-import { apiErrorSchema } from "@/shared/api/api-error-schema";
+import { problemDetailErrorSchema } from "@/shared/api/problem-detail-schema";
 
 type ImageUploadProps = {
   onUploadSuccess: (mediaId: number) => void;
@@ -24,8 +24,8 @@ export function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
       },
       onError: (error) => {
         console.error("Upload failed:", error);
-        const parsedError = apiErrorSchema.safeParse(error);
-        toast.error(parsedError.data?.info.message ?? "업로드 실패");
+        const parsedError = problemDetailErrorSchema.safeParse(error);
+        toast.error(parsedError.data?.info.detail ?? "업로드 실패");
       },
     },
   });

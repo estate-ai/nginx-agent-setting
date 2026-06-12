@@ -47,7 +47,9 @@ async def update_post_index_status(
 ) -> None:
     # 상태 변경은 의미 벡터를 바꾸지 않으므로 재임베딩 없이 payload만 갱신합니다.
     vector_store = vector_store or get_qdrant_rag_repository()
-    await vector_store.set_payload(point_id=POST_SOURCE.build_point_id(post_id), payload={"status": status})
+    await vector_store.set_payload(
+        point_id=POST_SOURCE.build_point_id(post_id), payload={"status": status}
+    )
 
 
 def _to_post_for_indexing(payload: IndexPostRequest) -> PostForIndexing:

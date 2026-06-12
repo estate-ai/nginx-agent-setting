@@ -3,7 +3,10 @@ from typing import Any
 from agent.schemas.chat import ReasoningEffort
 from agent.services.chat.fallback import FallbackChatModel
 from agent.services.chat.model_cards import get_chat_model_card
-from agent.services.chat.providers import assert_supported_reasoning_effort, create_chat_model_for_route
+from agent.services.chat.providers import (
+    assert_supported_reasoning_effort,
+    create_chat_model_for_route,
+)
 
 
 def get_chat_model(*, model: str, reasoning_effort: ReasoningEffort) -> Any:

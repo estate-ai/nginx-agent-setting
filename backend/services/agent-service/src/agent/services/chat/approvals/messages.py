@@ -40,7 +40,9 @@ def edited_tool_call(*, tool_call: Mapping[str, Any], decision: ApprovalDecision
     }
 
 
-def rejected_tool_message(*, tool_call: Mapping[str, Any], message: str | None = None) -> ToolMessage:
+def rejected_tool_message(
+    *, tool_call: Mapping[str, Any], message: str | None = None
+) -> ToolMessage:
     """사용자가 tool call을 거절했음을 model에 알리는 ToolMessage를 만듭니다."""
 
     return ToolMessage(
@@ -51,7 +53,9 @@ def rejected_tool_message(*, tool_call: Mapping[str, Any], message: str | None =
     )
 
 
-def responded_tool_message(*, tool_call: Mapping[str, Any], message: str | None = None) -> ToolMessage:
+def responded_tool_message(
+    *, tool_call: Mapping[str, Any], message: str | None = None
+) -> ToolMessage:
     """사용자 응답을 model에 다시 전달하는 ToolMessage를 만듭니다."""
 
     return ToolMessage(

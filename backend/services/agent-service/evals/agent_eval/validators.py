@@ -76,7 +76,9 @@ def validate_rule(rule: ValidationRule, context: ValidationContext) -> Validatio
 
 def _file_exists(rule: ValidationRule, context: ValidationContext) -> ValidationResult:
     path = _path(rule, context)
-    return _result(rule, path.exists(), None if path.exists() else f"File not found: {rule.get('path')}")
+    return _result(
+        rule, path.exists(), None if path.exists() else f"File not found: {rule.get('path')}"
+    )
 
 
 def _file_not_empty(rule: ValidationRule, context: ValidationContext) -> ValidationResult:
@@ -93,7 +95,9 @@ def _file_contains(rule: ValidationRule, context: ValidationContext) -> Validati
         return _result(rule, False, f"File not found: {rule.get('path')}")
     pattern = str(rule.get("pattern", ""))
     passed = pattern in path.read_text(encoding="utf-8")
-    return _result(rule, passed, None if passed else f"File {rule.get('path')} does not contain: {pattern}")
+    return _result(
+        rule, passed, None if passed else f"File {rule.get('path')} does not contain: {pattern}"
+    )
 
 
 def _file_matches(rule: ValidationRule, context: ValidationContext) -> ValidationResult:
@@ -102,7 +106,9 @@ def _file_matches(rule: ValidationRule, context: ValidationContext) -> Validatio
         return _result(rule, False, f"File not found: {rule.get('path')}")
     regex = str(rule.get("regex", ""))
     passed = re.search(regex, path.read_text(encoding="utf-8")) is not None
-    return _result(rule, passed, None if passed else f"File {rule.get('path')} does not match regex: {regex}")
+    return _result(
+        rule, passed, None if passed else f"File {rule.get('path')} does not match regex: {regex}"
+    )
 
 
 def _file_not_matches(rule: ValidationRule, context: ValidationContext) -> ValidationResult:
@@ -111,12 +117,16 @@ def _file_not_matches(rule: ValidationRule, context: ValidationContext) -> Valid
         return _result(rule, False, f"File not found: {rule.get('path')}")
     regex = str(rule.get("regex", ""))
     passed = re.search(regex, path.read_text(encoding="utf-8")) is None
-    return _result(rule, passed, None if passed else f"File {rule.get('path')} should not match regex: {regex}")
+    return _result(
+        rule, passed, None if passed else f"File {rule.get('path')} should not match regex: {regex}"
+    )
 
 
 def _command_succeeds(rule: ValidationRule, context: ValidationContext) -> ValidationResult:
     command = str(rule.get("command", ""))
-    completed = subprocess.run(command, cwd=context.workdir, shell=True, capture_output=True, text=True, check=False)
+    completed = subprocess.run(
+        command, cwd=context.workdir, shell=True, capture_output=True, text=True, check=False
+    )
     passed = completed.returncode == 0
     message = None if passed else f"Command failed: {command}\n{completed.stderr.strip()}"
     return _result(rule, passed, message)
@@ -143,7 +153,9 @@ def _tool_called(rule: ValidationRule, context: ValidationContext) -> Validation
         return _result(rule, False, "tool_called args must be a mapping")
 
     for _event, args in matching:
-        if all(_matches_expected(args.get(key), expected) for key, expected in expected_args.items()):
+        if all(
+            _matches_expected(args.get(key), expected) for key, expected in expected_args.items()
+        ):
             return _result(rule, True)
 
     return _result(rule, False, f"Tool {tool_name} called but args did not match: {expected_args}")
@@ -193,9 +205,13 @@ def _interrupt_required(rule: ValidationRule, context: ValidationContext) -> Val
     for value in values:
         requests = value.get("action_requests", [])
         if isinstance(requests, list):
-            actual_names.update(str(item.get("name")) for item in requests if isinstance(item, dict))
+            actual_names.update(
+                str(item.get("name")) for item in requests if isinstance(item, dict)
+            )
     missing = [name for name in expected_names if str(name) not in actual_names]
-    return _result(rule, not missing, None if not missing else f"Missing interrupt action names: {missing}")
+    return _result(
+        rule, not missing, None if not missing else f"Missing interrupt action names: {missing}"
+    )
 
 
 def _final_text_contains(rule: ValidationRule, context: ValidationContext) -> ValidationResult:

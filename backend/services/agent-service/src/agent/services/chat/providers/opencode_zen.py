@@ -40,7 +40,9 @@ class ChatOpenCodeZen(ChatOpenAI):
         if not isinstance(request_messages, list):
             return payload
 
-        for original_message, request_message in zip(original_messages, request_messages, strict=False):
+        for original_message, request_message in zip(
+            original_messages, request_messages, strict=False
+        ):
             if not isinstance(original_message, AIMessage):
                 continue
 
@@ -68,12 +70,18 @@ class ChatOpenCodeZen(ChatOpenAI):
             base_generation_info,
         )
         reasoning_content = _extract_reasoning_content(chunk)
-        if reasoning_content and generation_chunk is not None and isinstance(generation_chunk.message, AIMessageChunk):
+        if (
+            reasoning_content
+            and generation_chunk is not None
+            and isinstance(generation_chunk.message, AIMessageChunk)
+        ):
             generation_chunk.message.additional_kwargs["reasoning_content"] = reasoning_content
         return generation_chunk
 
 
-def create_opencode_zen_chat_model(*, route: ChatModelRoute, reasoning_effort: ReasoningEffort) -> Any:
+def create_opencode_zen_chat_model(
+    *, route: ChatModelRoute, reasoning_effort: ReasoningEffort
+) -> Any:
     kwargs: dict[str, Any] = {
         "model": route.langchain_model,
         "api_key": settings.opencode_zen_api_key,

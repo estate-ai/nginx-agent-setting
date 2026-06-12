@@ -7,7 +7,9 @@ from agent.schemas.chat import ReasoningEffort
 from agent.services.chat.model_cards import ChatModelRoute
 
 
-def create_ollama_chat_model(*, route: ChatModelRoute, reasoning_effort: ReasoningEffort) -> ChatOllama:
+def create_ollama_chat_model(
+    *, route: ChatModelRoute, reasoning_effort: ReasoningEffort
+) -> ChatOllama:
     kwargs: dict[str, Any] = {
         "model": route.langchain_model,
         "base_url": settings.ollama_base_url,

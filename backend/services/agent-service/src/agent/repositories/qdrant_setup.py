@@ -5,7 +5,10 @@ from qdrant_client.http import models
 from agent.clients.qdrant import get_qdrant_client
 from agent.core.config import settings
 from agent.repositories.qdrant import RAG_VECTOR_NAME, get_qdrant_distance
-from agent.services.rag.sources.registry import payload_indexes_for_registered_sources, qdrant_field_schema
+from agent.services.rag.sources.registry import (
+    payload_indexes_for_registered_sources,
+    qdrant_field_schema,
+)
 
 
 async def ensure_qdrant_collection_and_alias() -> None:

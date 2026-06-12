@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, status
 
+from agent.core.exception_handlers import setup_global_exception_handlers
 from agent.schemas.chat import ListChatModelsResponse, ListChatToolsResponse
 from agent.services.chat.model_catalog import ChatModelCatalogError, list_chat_models
 from agent.services.chat.toolkits.chat_toolkit import list_chat_tools
 
 app = FastAPI(title="Pickle Agent Custom Routes")
+
+# 글로벌 예외 핸들러 등록
+setup_global_exception_handlers(app)
 
 
 @app.get("/api/v1/llm/tools", response_model=ListChatToolsResponse, tags=["llm"])

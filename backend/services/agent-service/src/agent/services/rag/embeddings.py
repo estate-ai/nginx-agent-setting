@@ -5,8 +5,8 @@ from typing import Protocol, Sequence
 
 from google.genai import types
 
-from agent.clients.gemini import GeminiEmbeddingClient, get_gemini_embedding_client
-from agent.clients.http import SignedUrlMediaClient, get_signed_url_media_client
+from agent.clients.gemini import get_gemini_embedding_client
+from agent.clients.http import get_signed_url_media_client
 from agent.services.rag.models import PostForIndexing, PostMediaAttachment
 
 
@@ -16,7 +16,9 @@ class ImagePartFetcher(Protocol):
 
 
 class TextImageEmbedder(Protocol):
-    async def embed_post(self, *, text: str | None, media_parts: Sequence[types.Part]) -> list[float]:
+    async def embed_post(
+        self, *, text: str | None, media_parts: Sequence[types.Part]
+    ) -> list[float]:
         raise NotImplementedError
 
     async def embed_query(self, query: str) -> list[float]:
@@ -62,4 +64,6 @@ async def embed_search_query(
 
 
 def _sort_attachments(attachments: list[PostMediaAttachment]) -> list[PostMediaAttachment]:
-    return sorted(attachments, key=lambda attachment: (attachment.sort_order, attachment.attachment_id))
+    return sorted(
+        attachments, key=lambda attachment: (attachment.sort_order, attachment.attachment_id)
+    )

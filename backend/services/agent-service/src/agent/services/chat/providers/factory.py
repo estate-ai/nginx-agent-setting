@@ -12,7 +12,9 @@ class UnsupportedReasoningEffortError(ValueError):
     """선택한 모델 카드에서 지원하지 않는 reasoning effort입니다."""
 
 
-def assert_supported_reasoning_effort(*, card: ChatModelCard, reasoning_effort: ReasoningEffort) -> None:
+def assert_supported_reasoning_effort(
+    *, card: ChatModelCard, reasoning_effort: ReasoningEffort
+) -> None:
     if reasoning_effort not in card.supported_reasoning_efforts:
         supported = ", ".join(card.supported_reasoning_efforts)
         raise UnsupportedReasoningEffortError(

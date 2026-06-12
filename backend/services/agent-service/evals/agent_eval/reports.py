@@ -63,7 +63,9 @@ def write_report(report: dict[str, Any], output_dir: Path) -> Path:
     run_dir = output_dir / timestamp
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    (run_dir / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    (run_dir / "report.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     (run_dir / "summary.md").write_text(summary_markdown(report), encoding="utf-8")
     (run_dir / "responses.md").write_text(responses_markdown(report), encoding="utf-8")
     _update_latest_symlink(output_dir, run_dir)
@@ -152,7 +154,11 @@ def _trial_to_dict(trial: TrialResult) -> dict[str, Any]:
                 "final_text": collect_model_text(turn.all_events),
                 "events": [event.event for event in turn.all_events],
                 "validations": [
-                    {"rule": validation.rule, "passed": validation.passed, "message": validation.message}
+                    {
+                        "rule": validation.rule,
+                        "passed": validation.passed,
+                        "message": validation.message,
+                    }
                     for validation in turn.validations
                 ],
             }
@@ -183,4 +189,3 @@ def _json_default(value: Any) -> Any:
     if isinstance(value, datetime):
         return value.isoformat()
     raise TypeError(f"Object is not JSON serializable: {value!r}")
-

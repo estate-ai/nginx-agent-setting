@@ -1,6 +1,6 @@
 from typing import Any, cast
 
-from langchain_core.messages import AIMessage, AnyMessage, ToolMessage
+from langchain_core.messages import AnyMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.prebuilt import ToolNode
 from langgraph.runtime import Runtime
@@ -20,7 +20,11 @@ from agent.services.chat.approvals.policy import (
     default_allowed_tools,
     requires_approval,
 )
-from agent.services.chat.approvals.schemas import ApprovalDecision, ApprovalInterruptPayload, ApprovalResumePayload
+from agent.services.chat.approvals.schemas import (
+    ApprovalDecision,
+    ApprovalInterruptPayload,
+    ApprovalResumePayload,
+)
 from agent.services.chat.context import ChatRuntimeContext
 from agent.services.chat.state import ChatState
 from agent.services.chat.tools import ChatToolError
@@ -55,7 +59,9 @@ def approval_gate(
     for tool_call in ai_message.tool_calls:
         tool_call_dict = cast(dict[str, Any], dict(tool_call))
         tool_name = str(tool_call_dict["name"])
-        if not requires_approval(tool_name=tool_name, allowed_tools=allowed_tools, interrupt_on=interrupt_on):
+        if not requires_approval(
+            tool_name=tool_name, allowed_tools=allowed_tools, interrupt_on=interrupt_on
+        ):
             continue
 
         action_requests.append(
@@ -142,14 +148,18 @@ async def call_tools_with_approval(
             decision = None
 
         if needs_approval and decision is None:
-            synthetic_messages_by_id[tool_call_id] = missing_decision_tool_message(tool_call=tool_call_dict)
+            synthetic_messages_by_id[tool_call_id] = missing_decision_tool_message(
+                tool_call=tool_call_dict
+            )
             continue
 
         decision_type = (decision or {"type": "approve"}).get("type", "approve")
         if decision_type == "approve":
             executable_calls.append(tool_call_dict)
         elif decision_type == "edit":
-            executable_calls.append(edited_tool_call(tool_call=tool_call_dict, decision=decision or {}))
+            executable_calls.append(
+                edited_tool_call(tool_call=tool_call_dict, decision=decision or {})
+            )
         elif decision_type == "reject":
             synthetic_messages_by_id[tool_call_id] = rejected_tool_message(
                 tool_call=tool_call_dict,
@@ -161,7 +171,9 @@ async def call_tools_with_approval(
                 message=(decision or {}).get("message"),
             )
         else:
-            synthetic_messages_by_id[tool_call_id] = missing_decision_tool_message(tool_call=tool_call_dict)
+            synthetic_messages_by_id[tool_call_id] = missing_decision_tool_message(
+                tool_call=tool_call_dict
+            )
 
     executed_messages_by_id: dict[str, ToolMessage] = {}
     if executable_calls:
@@ -176,7 +188,9 @@ async def call_tools_with_approval(
     for tool_call in ai_message.tool_calls:
         tool_call_dict = cast(dict[str, Any], dict(tool_call))
         tool_call_id = str(tool_call_dict["id"])
-        message = synthetic_messages_by_id.get(tool_call_id) or executed_messages_by_id.get(tool_call_id)
+        message = synthetic_messages_by_id.get(tool_call_id) or executed_messages_by_id.get(
+            tool_call_id
+        )
         if message is not None:
             ordered_messages.append(cast(AnyMessage, message))
 

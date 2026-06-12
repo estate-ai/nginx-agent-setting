@@ -49,11 +49,7 @@ async def _fetch_jwks(*, force_refresh: bool = False) -> dict[str, Any]:
     async with _jwks_lock:
         # 다른 요청이 lock 대기 중 JWKS를 이미 갱신했을 수 있으므로 한 번 더 확인한다.
         now = time.monotonic()
-        if (
-            not force_refresh
-            and _jwks_cache is not None
-            and now < _jwks_cache_expires_at
-        ):
+        if not force_refresh and _jwks_cache is not None and now < _jwks_cache_expires_at:
             return _jwks_cache
 
         # LangGraph custom auth는 ASGI request path 안에서 실행된다.

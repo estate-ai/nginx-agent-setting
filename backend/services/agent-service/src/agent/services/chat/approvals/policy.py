@@ -94,5 +94,7 @@ def build_review_config(
 
     return {
         "action_name": tool_name,
-        "allowed_decisions": allowed_decisions_for_tool(tool_name=tool_name, interrupt_on=interrupt_on),
+        "allowed_decisions": allowed_decisions_for_tool(
+            tool_name=tool_name, interrupt_on=interrupt_on
+        ),
     }

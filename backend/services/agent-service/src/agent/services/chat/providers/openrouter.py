@@ -5,7 +5,9 @@ from agent.schemas.chat import ReasoningEffort
 from agent.services.chat.model_cards import ChatModelRoute
 
 
-def create_openrouter_chat_model(*, route: ChatModelRoute, reasoning_effort: ReasoningEffort) -> Any:
+def create_openrouter_chat_model(
+    *, route: ChatModelRoute, reasoning_effort: ReasoningEffort
+) -> Any:
     from langchain_openai import ChatOpenAI
 
     kwargs: dict[str, Any] = {

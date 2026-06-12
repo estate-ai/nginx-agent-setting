@@ -1,12 +1,10 @@
-from typing import Literal, cast
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 
 ChatApprovalDecisionType = Literal["approve", "edit", "reject", "respond"]
 ReasoningEffort = Literal["none", "low", "medium", "high"]
-
-
 
 
 class ChatToolInfo(BaseModel):

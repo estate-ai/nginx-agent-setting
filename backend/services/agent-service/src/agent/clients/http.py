@@ -16,13 +16,17 @@ class SignedUrlMediaClient:
     async def fetch_image_part(self, *, signed_url: str, content_type: str) -> types.Part:
         # Java 서버가 검증한 signed URL만 받는 전제이며, Python은 embedding 가능한 image/*만 허용합니다.
         if not content_type.startswith("image/"):
-            raise UnsupportedMediaTypeError(f"embedding에 지원하지 않는 media type입니다: {content_type}")
+            raise UnsupportedMediaTypeError(
+                f"embedding에 지원하지 않는 media type입니다: {content_type}"
+            )
 
         try:
             response = await self._client.get(signed_url)
             response.raise_for_status()
         except httpx.TimeoutException as error:
-            raise MediaFetchError("signed media URL을 가져오는 중 timeout이 발생했습니다.") from error
+            raise MediaFetchError(
+                "signed media URL을 가져오는 중 timeout이 발생했습니다."
+            ) from error
         except httpx.HTTPError as error:
             raise MediaFetchError("signed media URL을 가져오지 못했습니다.") from error
 

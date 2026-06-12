@@ -5,4 +5,3 @@ class HealthResponse(BaseModel):
     status: str
     service: str
     timestamp: str | None = None
-

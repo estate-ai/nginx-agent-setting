@@ -45,7 +45,10 @@ def _redact_secrets(value: Any) -> Any:
 
 def _looks_secret_key(key: str) -> bool:
     lowered = key.lower()
-    return any(token in lowered for token in ("api_key", "apikey", "secret", "token", "password", "authorization"))
+    return any(
+        token in lowered
+        for token in ("api_key", "apikey", "secret", "token", "password", "authorization")
+    )
 
 
 def _redact_secret_text(text: str) -> str:

@@ -14,9 +14,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from agent.core.config import settings
 from agent.schemas.chat import ReasoningEffort
-from agent.services.chat.model_cards import ChatModelCard, ChatModelProvider, ChatModelRoute, list_chat_model_cards
+from agent.services.chat.model_cards import (
+    ChatModelCard,
+    ChatModelProvider,
+    ChatModelRoute,
+    list_chat_model_cards,
+)
 from agent.services.chat.providers import create_chat_model_for_route
-
 
 
 ProviderChoice = ChatModelProvider
@@ -30,7 +34,9 @@ PROVIDER_DEFAULT_REASONING: dict[ProviderChoice, ReasoningEffort] = {
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Inspect normalized LangChain stream events from configured providers.")
+    parser = argparse.ArgumentParser(
+        description="Inspect normalized LangChain stream events from configured providers."
+    )
     parser.add_argument(
         "--provider",
         choices=["ollama", "google", "opencode_zen", "openrouter"],
@@ -44,12 +50,18 @@ def main() -> None:
     card, route = _route_for_provider(args.provider, model_id=args.model)
     _skip_if_required_key_missing(route)
     try:
-        asyncio.run(_inspect(card=card, route=route, prompt=args.prompt, max_events=args.max_events))
+        asyncio.run(
+            _inspect(card=card, route=route, prompt=args.prompt, max_events=args.max_events)
+        )
     except Exception as error:
-        raise SystemExit(f"{route.provider} smoke failed: {error.__class__.__name__}: {error}") from error
+        raise SystemExit(
+            f"{route.provider} smoke failed: {error.__class__.__name__}: {error}"
+        ) from error
 
 
-async def _inspect(*, card: ChatModelCard, route: ChatModelRoute, prompt: str, max_events: int) -> None:
+async def _inspect(
+    *, card: ChatModelCard, route: ChatModelRoute, prompt: str, max_events: int
+) -> None:
     model = create_chat_model_for_route(route, PROVIDER_DEFAULT_REASONING[route.provider])
     count = 0
     async for event in model.astream_events(prompt, version="v2"):
@@ -65,7 +77,9 @@ async def _inspect(*, card: ChatModelCard, route: ChatModelRoute, prompt: str, m
             break
 
 
-def _route_for_provider(provider: ProviderChoice, *, model_id: str | None) -> tuple[ChatModelCard, ChatModelRoute]:
+def _route_for_provider(
+    provider: ProviderChoice, *, model_id: str | None
+) -> tuple[ChatModelCard, ChatModelRoute]:
     for card in list_chat_model_cards():
         if model_id is not None and card.id != model_id:
             continue

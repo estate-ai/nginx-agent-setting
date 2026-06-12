@@ -82,7 +82,9 @@ class LlmEvalClient:
         }
         return await self._stream_command(thread_id=thread_id, command=command)
 
-    async def _stream_command(self, *, thread_id: str, command: dict[str, Any]) -> list[StreamRecord]:
+    async def _stream_command(
+        self, *, thread_id: str, command: dict[str, Any]
+    ) -> list[StreamRecord]:
         parser = SseParser()
         records: list[StreamRecord] = []
 
@@ -103,7 +105,9 @@ class LlmEvalClient:
             },
         ) as response:
             response.raise_for_status()
-            command_task = asyncio.create_task(self._send_command(thread_id=thread_id, command=command))
+            command_task = asyncio.create_task(
+                self._send_command(thread_id=thread_id, command=command)
+            )
 
             async for chunk in response.aiter_text():
                 parsed = parser.feed(chunk)

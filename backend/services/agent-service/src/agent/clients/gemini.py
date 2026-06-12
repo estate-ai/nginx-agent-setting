@@ -14,7 +14,9 @@ class GeminiEmbeddingClient:
     def __init__(self, client: Any | None = None) -> None:
         self._client = client or _build_gemini_client()
 
-    async def embed_post(self, *, text: str | None, media_parts: Sequence[types.Part]) -> list[float]:
+    async def embed_post(
+        self, *, text: str | None, media_parts: Sequence[types.Part]
+    ) -> list[float]:
         parts: list[types.Part] = []
         if text is not None and text.strip():
             # 문서 벡터와 검색어 벡터가 같은 공간에서 비교되도록 입력 의도를 짧게 표시합니다.

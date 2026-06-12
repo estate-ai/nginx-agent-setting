@@ -5,6 +5,10 @@ spring:
   application:
     name: server
 
+  mvc:
+    problemdetails:
+      enabled: true
+
   servlet:
     multipart:
       max-file-size: 10MB

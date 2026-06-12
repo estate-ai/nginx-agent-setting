@@ -8,7 +8,7 @@ import { Input } from "@/shared/components/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
 import { ImageUpload } from "@/features/media/components/image-upload";
 import { toast } from "sonner";
-import { apiErrorSchema } from "@/shared/api/api-error-schema";
+import { problemDetailErrorSchema } from "@/shared/api/problem-detail-schema";
 
 export function CreateScheduledPost() {
   const [content, setContent] = useState("");
@@ -30,8 +30,8 @@ export function CreateScheduledPost() {
       },
       onError: (error) => {
         console.error("Create scheduled post failed", error);
-        const parsedError = apiErrorSchema.safeParse(error);
-        toast.error(parsedError.data?.info.message ?? "예약게시글 작성 실패");
+        const parsedError = problemDetailErrorSchema.safeParse(error);
+        toast.error(parsedError.data?.info.detail ?? "예약게시글 작성 실패");
       },
     },
   });

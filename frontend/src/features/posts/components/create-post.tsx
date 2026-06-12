@@ -7,7 +7,7 @@ import { Textarea } from "@/shared/components/ui/textarea";
 import { ImageUpload } from "@/features/media/components/image-upload";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { apiErrorSchema } from "@/shared/api/api-error-schema";
+import { problemDetailErrorSchema } from "@/shared/api/problem-detail-schema";
 
 export function CreatePost() {
   const [content, setContent] = useState("");
@@ -25,8 +25,8 @@ export function CreatePost() {
       },
       onError: (error) => {
         console.error("Create post failed", error);
-        const parsedError = apiErrorSchema.safeParse(error);
-        toast.error(parsedError.data?.info.message ?? "게시글 작성 실패");
+        const parsedError = problemDetailErrorSchema.safeParse(error);
+        toast.error(parsedError.data?.info.detail ?? "게시글 작성 실패");
       },
     },
   });

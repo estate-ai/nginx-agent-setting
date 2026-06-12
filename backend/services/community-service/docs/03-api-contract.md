@@ -16,14 +16,17 @@
 
 ## 공통 에러 응답
 
-`GlobalExceptionHandler`와 `SecurityConfig`에서 JSON 에러 응답을 반환한다.
+`GlobalExceptionHandler`와 `SecurityConfig`에서 RFC 7807 `ProblemDetail` JSON 에러 응답을 반환한다.
 
 예시:
 
 ```json
 {
+  "type": "about:blank",
+  "title": "Unauthorized",
   "status": 401,
-  "message": "로그인이 필요합니다."
+  "detail": "로그인이 필요합니다.",
+  "instance": "/api/v1/posts"
 }
 ```
 

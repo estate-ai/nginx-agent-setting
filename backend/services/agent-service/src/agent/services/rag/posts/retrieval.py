@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from agent.repositories.qdrant import get_qdrant_rag_repository
-from agent.schemas.rag import PostSearchRequest, PostSearchResponse, PostSearchResult, RelatedPostsRequest
+from agent.schemas.rag import (
+    PostSearchRequest,
+    PostSearchResponse,
+    PostSearchResult,
+    RelatedPostsRequest,
+)
 from agent.services.rag.embeddings import TextImageEmbedder, embed_search_query
 from agent.services.rag.models import PostSearchHit, VectorPointNotFoundError
 from agent.services.rag.sources.post.source import POST_SOURCE
@@ -62,10 +67,7 @@ def _post_hits_from_points(points: list[VectorSearchPoint]) -> list[PostSearchHi
 
 def _to_response(hits: list[PostSearchHit]) -> PostSearchResponse:
     return PostSearchResponse(
-        results=[
-            PostSearchResult(postId=hit.post_id, score=hit.score)
-            for hit in hits
-        ]
+        results=[PostSearchResult(postId=hit.post_id, score=hit.score) for hit in hits]
     )
 
 

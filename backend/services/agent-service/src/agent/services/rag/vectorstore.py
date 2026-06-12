@@ -13,7 +13,9 @@ class VectorSearchPoint:
 
 
 class RagVectorStore(Protocol):
-    async def upsert_point(self, *, point_id: str, vector: list[float], payload: dict[str, object]) -> None:
+    async def upsert_point(
+        self, *, point_id: str, vector: list[float], payload: dict[str, object]
+    ) -> None:
         raise NotImplementedError
 
     async def delete_point(self, *, point_id: str) -> None:

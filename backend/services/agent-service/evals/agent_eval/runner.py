@@ -83,7 +83,9 @@ async def run_trial(pair: TestPair, *, base_workdir: Path, attempt: int) -> Tria
 
     try:
         for turn in pair.scenario.normalized_turns():
-            turn_result = await _run_turn(client=client, turn=turn, thread_id=thread_id, workdir=workdir)
+            turn_result = await _run_turn(
+                client=client, turn=turn, thread_id=thread_id, workdir=workdir
+            )
             thread_id = turn_result.thread_id
             turn_results.append(turn_result)
             failed = [validation for validation in turn_result.validations if not validation.passed]
@@ -150,7 +152,9 @@ async def _run_turn(
             )
 
     combined_events = [*events, *resume_events]
-    validations = validate_all(turn.validate, ValidationContext(events=combined_events, workdir=workdir))
+    validations = validate_all(
+        turn.validate, ValidationContext(events=combined_events, workdir=workdir)
+    )
     return TurnResult(
         prompt=turn.prompt,
         thread_id=thread_id,
@@ -187,7 +191,9 @@ def _build_resume_payload(events: list[StreamRecord], resume: ResumeConfig) -> d
     return {"interrupt_id": interrupt_id, "namespace": namespace, "decisions": decisions}
 
 
-def _prepare_workdir(scenario: Scenario, base_workdir: Path, runner_name: str, attempt: int) -> Path:
+def _prepare_workdir(
+    scenario: Scenario, base_workdir: Path, runner_name: str, attempt: int
+) -> Path:
     test_id = f"{scenario.name}_{runner_name}_attempt{attempt}".replace("/", "_").replace(":", "_")
     workdir = base_workdir / test_id
     if workdir.exists():
@@ -215,14 +221,20 @@ def _write_trial_log(workdir: Path, turns: list[TurnResult], errors: list[str]) 
                 "thread_id": turn.thread_id,
                 "events": [event.event for event in turn.all_events],
                 "validations": [
-                    {"rule": validation.rule, "passed": validation.passed, "message": validation.message}
+                    {
+                        "rule": validation.rule,
+                        "passed": validation.passed,
+                        "message": validation.message,
+                    }
                     for validation in turn.validations
                 ],
             }
             for turn in turns
         ],
     }
-    (workdir / "trial-log.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    (workdir / "trial-log.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
 
 def main() -> None:

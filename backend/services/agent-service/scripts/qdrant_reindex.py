@@ -16,7 +16,9 @@ from agent.services.rag.posts.ingestion import index_post
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(description="JSONL 파일의 게시글 문서를 Qdrant에 재색인합니다.")
+    parser = argparse.ArgumentParser(
+        description="JSONL 파일의 게시글 문서를 Qdrant에 재색인합니다."
+    )
     parser.add_argument("input", help="/internal/index/posts payload가 담긴 JSONL 파일 경로입니다.")
     args = parser.parse_args()
 

@@ -150,4 +150,3 @@ class TrialResult:
     @property
     def validations(self) -> list[ValidationResult]:
         return [validation for turn in self.turns for validation in turn.validations]
-

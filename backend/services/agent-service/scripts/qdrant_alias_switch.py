@@ -17,7 +17,9 @@ from agent.core.config import settings
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(description="활성 Qdrant alias를 다른 collection으로 전환합니다.")
+    parser = argparse.ArgumentParser(
+        description="활성 Qdrant alias를 다른 collection으로 전환합니다."
+    )
     parser.add_argument("collection", help="활성 alias가 바라볼 대상 collection 이름입니다.")
     args = parser.parse_args()
 
@@ -43,7 +45,9 @@ async def main() -> None:
     )
 
     await client.update_collection_aliases(change_aliases_operations=operations)
-    print(f"alias={settings.qdrant_collection_alias}를 collection={args.collection}으로 전환했습니다.")
+    print(
+        f"alias={settings.qdrant_collection_alias}를 collection={args.collection}으로 전환했습니다."
+    )
 
 
 if __name__ == "__main__":

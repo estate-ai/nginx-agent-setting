@@ -40,7 +40,9 @@ class ToolSpec(BaseModel):
         if not _TOOL_NAME_PATTERN.fullmatch(self.name):
             raise ValueError(f"Tool 이름은 snake_case여야 합니다. name={self.name}")
         if self.tool.name != self.name:
-            raise ValueError(f"ToolSpec name은 tool.name과 같아야 합니다. spec={self.name} tool={self.tool.name}")
+            raise ValueError(
+                f"ToolSpec name은 tool.name과 같아야 합니다. spec={self.name} tool={self.tool.name}"
+            )
         if not self.description.strip():
             raise ValueError(f"Tool description은 비어 있으면 안 됩니다. name={self.name}")
         if not _is_supported_args_schema(self.args_schema):

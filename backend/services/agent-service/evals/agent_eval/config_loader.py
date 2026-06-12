@@ -117,12 +117,19 @@ def _parse_matrix_entry(data: Any) -> MatrixEntry:
 
 def _parse_scenario(data: dict[str, Any], *, path: Path) -> Scenario:
     turns_data = data.get("turns", [])
-    turns = [_parse_turn(item, path=path) for item in turns_data] if isinstance(turns_data, list) else []
+    turns = (
+        [_parse_turn(item, path=path) for item in turns_data]
+        if isinstance(turns_data, list)
+        else []
+    )
     return Scenario(
         name=_require_str(data, "name"),
         description=_require_str(data, "description"),
         prompt=cast(str | None, data.get("prompt")),
-        setup={key: str(value) for key, value in _ensure_mapping(data.get("setup", {}), "setup").items()},
+        setup={
+            key: str(value)
+            for key, value in _ensure_mapping(data.get("setup", {}), "setup").items()
+        },
         validate=_parse_validation_rules(data.get("validate", [])),
         turns=turns,
         tags=[str(item) for item in cast(list[Any], data.get("tags", []))],
