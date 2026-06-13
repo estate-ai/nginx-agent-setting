@@ -1,6 +1,6 @@
-import { test as setup, expect } from "@playwright/test";
+import { test as setup } from "@playwright/test"
 
-const authFile = "e2e/.auth/user.json";
+const authFile = "e2e/.auth/user.json"
 
 setup("authenticate", async ({ page }) => {
   // TODO: 실제 로그인 페이지 경로와 셀렉터에 맞춰 수정해야 합니다.
@@ -15,7 +15,7 @@ setup("authenticate", async ({ page }) => {
   */
 
   // 현재는 임시로 어플리케이션 루트에 방문하여 기본 쿠키만 저장합니다.
-  await page.goto("/");
-  
-  await page.context().storageState({ path: authFile });
-});
+  await page.goto("/")
+
+  await page.context().storageState({ path: authFile })
+})
