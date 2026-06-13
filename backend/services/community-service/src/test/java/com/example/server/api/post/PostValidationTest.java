@@ -1,7 +1,5 @@
 package com.example.server.api.post;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -21,11 +19,10 @@ class PostValidationTest extends IntegrationTestSupport {
 
     @Test
     void 내용이_비어있으면_게시글을_생성할_수_없다() throws Exception {
-        User alice = testDataHelper.createGoogleUser("google-sub-alice", "alice@example.com");
+        User alice = testDataHelper.createBetterAuthUser("better-auth-user-alice", "alice@example.com");
 
         mockMvc.perform(post("/api/v1/posts")
-                        .with(oidcLogin().idToken(token -> token.subject(alice.getProviderSubject())))
-                        .with(csrf())
+                        .with(jwtFor(alice))
                         .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"content\":\"   \"}"))
                 .andExpect(status().isBadRequest());
@@ -33,12 +30,11 @@ class PostValidationTest extends IntegrationTestSupport {
 
     @Test
     void 내용이_비어있어도_mediaAttachmentIds가_있으면_게시글을_생성할_수_있다() throws Exception {
-        User alice = testDataHelper.createGoogleUser("google-sub-alice", "alice@example.com");
+        User alice = testDataHelper.createBetterAuthUser("better-auth-user-alice", "alice@example.com");
         Long mediaId = testDataHelper.createUploadedMedia(alice, "posts/2026/05/22/%d/uploaded.png".formatted(alice.getId()));
 
         mockMvc.perform(post("/api/v1/posts")
-                        .with(oidcLogin().idToken(token -> token.subject(alice.getProviderSubject())))
-                        .with(csrf())
+                        .with(jwtFor(alice))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {

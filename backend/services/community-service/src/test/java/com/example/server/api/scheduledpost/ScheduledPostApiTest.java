@@ -2,8 +2,6 @@ package com.example.server.api.scheduledpost;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,7 +12,9 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.server.core.post.Post;
 import com.example.server.core.post.PostCommandService;
@@ -33,12 +33,11 @@ class ScheduledPostApiTest extends IntegrationTestSupport {
 
     @Test
     void 예약_게시글_생성은_mediaAttachmentIds를_예약_draft로_저장한다() throws Exception {
-        User alice = testDataHelper.createGoogleUser("google-sub-alice", "alice@example.com");
+        User alice = testDataHelper.createBetterAuthUser("better-auth-user-alice", "alice@example.com");
         Long mediaId = testDataHelper.createUploadedMedia(alice, "posts/2026/05/24/%d/scheduled.png".formatted(alice.getId()));
 
         mockMvc.perform(post("/api/v1/scheduled-posts")
-                        .with(oidcLogin().idToken(token -> token.subject(alice.getProviderSubject())))
-                        .with(csrf())
+                        .with(jwtFor(alice))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -54,13 +53,11 @@ class ScheduledPostApiTest extends IntegrationTestSupport {
             jdbcTemplate.queryForObject(
                     "select set_config('app.current_user_id', ?, true)",
                     String.class,
-                    alice.getId().toString()
-            );
+                    alice.getId().toString());
             return jdbcTemplate.queryForObject(
                     "select media_attachment_ids::text from scheduled_posts where user_id = ?",
                     String.class,
-                    alice.getId()
-            );
+                    alice.getId());
         });
 
         assertThat(storedMediaIds).isEqualTo("[%d]".formatted(mediaId));
@@ -68,12 +65,11 @@ class ScheduledPostApiTest extends IntegrationTestSupport {
 
     @Test
     void 예약_게시글은_내용이_비어있어도_mediaAttachmentIds가_있으면_생성할_수_있다() throws Exception {
-        User alice = testDataHelper.createGoogleUser("google-sub-alice", "alice@example.com");
+        User alice = testDataHelper.createBetterAuthUser("better-auth-user-alice", "alice@example.com");
         Long mediaId = testDataHelper.createUploadedMedia(alice, "posts/2026/05/24/%d/scheduled-image-only.png".formatted(alice.getId()));
 
         mockMvc.perform(post("/api/v1/scheduled-posts")
-                        .with(oidcLogin().idToken(token -> token.subject(alice.getProviderSubject())))
-                        .with(csrf())
+                        .with(jwtFor(alice))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -87,11 +83,10 @@ class ScheduledPostApiTest extends IntegrationTestSupport {
 
     @Test
     void 예약_게시글은_내용과_이미지가_모두_비어있으면_생성할_수_없다() throws Exception {
-        User alice = testDataHelper.createGoogleUser("google-sub-alice", "alice@example.com");
+        User alice = testDataHelper.createBetterAuthUser("better-auth-user-alice", "alice@example.com");
 
         mockMvc.perform(post("/api/v1/scheduled-posts")
-                        .with(oidcLogin().idToken(token -> token.subject(alice.getProviderSubject())))
-                        .with(csrf())
+                        .with(jwtFor(alice))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -105,20 +100,18 @@ class ScheduledPostApiTest extends IntegrationTestSupport {
 
     @Test
     void 예약_발행용_게시글_생성은_일반_게시글과_같은_첨부_경로를_사용한다() {
-        User alice = testDataHelper.createGoogleUser("google-sub-alice", "alice@example.com");
+        User alice = testDataHelper.createBetterAuthUser("better-auth-user-alice", "alice@example.com");
         Long mediaId = testDataHelper.createUploadedMedia(alice, "posts/2026/05/24/%d/published-from-scheduled.png".formatted(alice.getId()));
 
         Post post = postCommandService.createRootFromScheduled(
                 alice,
-                new PostDraft("", List.of(mediaId))
-        );
+                new PostDraft("", List.of(mediaId)));
 
         Long attachedCount = transactionTemplate.execute(status -> {
             jdbcTemplate.queryForObject(
                     "select set_config('app.current_user_id', ?, true)",
                     String.class,
-                    alice.getId().toString()
-            );
+                    alice.getId().toString());
             return jdbcTemplate.queryForObject(
                     """
                     select count(*)
@@ -127,8 +120,7 @@ class ScheduledPostApiTest extends IntegrationTestSupport {
                       and status = 'ATTACHED'
                     """,
                     Long.class,
-                    post.getId()
-            );
+                    post.getId());
         });
 
         assertThat(attachedCount).isEqualTo(1L);
@@ -136,25 +128,25 @@ class ScheduledPostApiTest extends IntegrationTestSupport {
 
     @Test
     void 예약_발행용_게시글_생성은_일반_게시글과_같은_첨부_검증을_사용한다() {
-        User alice = testDataHelper.createGoogleUser("google-sub-alice", "alice@example.com");
-        User bob = testDataHelper.createGoogleUser("google-sub-bob", "bob@example.com");
+        User alice = testDataHelper.createBetterAuthUser("better-auth-user-alice", "alice@example.com");
+        User bob = testDataHelper.createBetterAuthUser("better-auth-user-bob", "bob@example.com");
         Long otherUserMediaId = testDataHelper.createUploadedMedia(bob, "posts/2026/05/24/%d/other-user.png".formatted(bob.getId()));
         Long alreadyAttachedPostId = testDataHelper.createRootPost(alice, "이미 첨부된 이미지가 있는 글");
         Long alreadyAttachedMediaId = testDataHelper.createAttachedMedia(alice, alreadyAttachedPostId, "posts/2026/05/24/%d/already-attached.png".formatted(alice.getId()));
 
         assertThatThrownBy(() -> postCommandService.createRootFromScheduled(
                 alice,
-                new PostDraft("다른 사용자 이미지", List.of(otherUserMediaId))
-        ))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("첨부할 수 없는 이미지가 포함되어 있습니다.");
+                new PostDraft("다른 사용자 이미지", List.of(otherUserMediaId))))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
 
         assertThatThrownBy(() -> postCommandService.createRootFromScheduled(
                 alice,
-                new PostDraft("이미 첨부된 이미지", List.of(alreadyAttachedMediaId))
-        ))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("첨부할 수 없는 이미지가 포함되어 있습니다.");
+                new PostDraft("이미 첨부된 이미지", List.of(alreadyAttachedMediaId))))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     private String futureScheduledAt() {

@@ -22,8 +22,9 @@ public class TestDataHelper {
     private final TransactionTemplate transactionTemplate;
     private final JdbcTemplate jdbcTemplate;
 
-    public User createGoogleUser(String subject, String email) {
-        return userRepository.save(User.createGoogleUser(
+    public User createBetterAuthUser(String subject, String email) {
+        return userRepository.save(User.createExternalUser(
+                "better-auth",
                 subject,
                 email,
                 true,

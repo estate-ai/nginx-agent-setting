@@ -11,8 +11,9 @@ class PostTest {
 
     @Test
     void 작성자_id가_같으면_true를_반환한다() {
-        User user = User.createGoogleUser(
-                "google-sub-alice",
+        User user = User.createExternalUser(
+                "better-auth",
+                "better-auth-user-alice",
                 "alice@example.com",
                 true,
                 "Alice",

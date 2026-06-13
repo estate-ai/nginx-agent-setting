@@ -89,28 +89,6 @@ public class User {
         );
     }
 
-    /**
-     * NOTE: [Backward Compatibility]
-     * 기존 테스트/시드 코드가 Google user 생성 메서드를 사용하고 있어 유지합니다.
-     * 런타임 인증 매핑은 CurrentUserService에서 createExternalUser("better-auth", ...)를 사용합니다.
-     */
-    public static User createGoogleUser(
-            String providerSubject,
-            String email,
-            boolean emailVerified,
-            String name,
-            String pictureUrl
-    ) {
-        return createExternalUser(
-                "google",
-                providerSubject,
-                email,
-                emailVerified,
-                name,
-                pictureUrl
-        );
-    }
-
     // NOTE: [Java] 외부 인증 프로필 정보 갱신을 위한 범용 메서드
     public void updateExternalProfile(
             String email,
@@ -124,16 +102,4 @@ public class User {
         this.pictureUrl = pictureUrl;
     }
 
-    /**
-     * NOTE: [Backward Compatibility]
-     * 기존 Google 기준 호출부를 깨지 않기 위한 위임 메서드입니다.
-     */
-    public void updateGoogleProfile(
-            String email,
-            boolean emailVerified,
-            String name,
-            String pictureUrl
-    ) {
-        updateExternalProfile(email, emailVerified, name, pictureUrl);
-    }
 }
