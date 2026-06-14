@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { expect } from "storybook/test"
+import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { EmptyChatState } from "@/features/llm-chat/components/empty-chat-state"
 
 const meta = {

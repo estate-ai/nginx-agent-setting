@@ -1,5 +1,5 @@
-import { ChatModelMenu } from "@/features/llm-chat/components/composer/chat-model-menu"
 import { ChatComposer } from "@/features/llm-chat/components/composer/chat-composer"
+import { ChatModelMenu } from "@/features/llm-chat/components/composer/chat-model-menu"
 import { useLangGraphChatStream } from "@/features/llm-chat/hooks/use-langgraph-chat-stream"
 
 export function ChatComposerPanel() {

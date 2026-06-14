@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { createHitlInterrupts } from "@/features/llm-chat/testing/fixtures"
 import { createDefaultDecisionDrafts } from "@/features/llm-chat/lib/hitl-decisions/create-default-decision-drafts"
+import { createHitlInterrupts } from "@/features/llm-chat/testing/fixtures"
 
 describe("createDefaultDecisionDrafts", () => {
   it("builds approve drafts keyed by action index", () => {

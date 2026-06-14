@@ -1,8 +1,8 @@
 import { useState } from "react"
-import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { expect, userEvent, within } from "storybook/test"
-import { llmChatModels } from "@/features/llm-chat/testing/fixtures"
+import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { ChatModelMenu } from "@/features/llm-chat/components/composer/chat-model-menu"
+import { llmChatModels } from "@/features/llm-chat/testing/fixtures"
 import type { ChatReasoningEffort } from "@/features/llm-chat/types/chat-model-selection"
 
 function ChatModelMenuHarness() {
@@ -47,6 +47,8 @@ export const Interactive: Story = {
     await userEvent.click(body.getByText("o4"))
     await userEvent.click(body.getByText(/^o4$/i))
 
-    await expect(canvas.getByRole("button", { name: /o4/i })).toBeInTheDocument()
+    await expect(
+      canvas.getByRole("button", { name: /o4/i })
+    ).toBeInTheDocument()
   },
 }

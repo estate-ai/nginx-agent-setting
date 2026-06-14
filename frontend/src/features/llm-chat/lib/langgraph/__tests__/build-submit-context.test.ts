@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { createToolPolicyState } from "@/features/llm-chat/testing/fixtures"
 import { buildSubmitContext } from "@/features/llm-chat/lib/langgraph/build-submit-config"
 import { buildSubmitInput } from "@/features/llm-chat/lib/langgraph/build-submit-input"
+import { createToolPolicyState } from "@/features/llm-chat/testing/fixtures"
 
 describe("buildSubmitContext", () => {
   it("maps model selection and tool policy into runtime context", () => {

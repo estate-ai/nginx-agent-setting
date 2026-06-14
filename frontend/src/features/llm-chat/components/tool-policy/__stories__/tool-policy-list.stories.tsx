@@ -1,8 +1,8 @@
 import { useState } from "react"
-import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { expect, userEvent } from "storybook/test"
-import { llmChatTools } from "@/features/llm-chat/testing/fixtures"
+import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { ToolPolicyList } from "@/features/llm-chat/components/tool-policy/tool-policy-list"
+import { llmChatTools } from "@/features/llm-chat/testing/fixtures"
 
 function ToolPolicyListHarness() {
   const [allowedToolNames, setAllowedToolNames] = useState(

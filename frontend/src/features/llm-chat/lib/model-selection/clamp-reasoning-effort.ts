@@ -28,7 +28,10 @@ export function clampReasoningEffort(
   const currentRank = REASONING_EFFORT_RANK[currentEffort]
   const lowerOrEqualEfforts = supportedEfforts
     .filter((effort) => REASONING_EFFORT_RANK[effort] <= currentRank)
-    .sort((left, right) => REASONING_EFFORT_RANK[right] - REASONING_EFFORT_RANK[left])
+    .sort(
+      (left, right) =>
+        REASONING_EFFORT_RANK[right] - REASONING_EFFORT_RANK[left]
+    )
 
   return lowerOrEqualEfforts[0] ?? getDefaultReasoningEffort(supportedEfforts)
 }

@@ -19,11 +19,15 @@ type UseChatModelSelectionResult = ChatModelSelection & {
 export function useChatModelSelection(
   models: ChatModelOption[]
 ): UseChatModelSelectionResult {
-  const selectedModelId = useChatModelSelectionStore((state) => state.selectedModelId)
+  const selectedModelId = useChatModelSelectionStore(
+    (state) => state.selectedModelId
+  )
   const selectedReasoningEffort = useChatModelSelectionStore(
     (state) => state.selectedReasoningEffort
   )
-  const setSelectedModel = useChatModelSelectionStore((state) => state.setSelectedModel)
+  const setSelectedModel = useChatModelSelectionStore(
+    (state) => state.setSelectedModel
+  )
   const setSelectedReasoningEffort = useChatModelSelectionStore(
     (state) => state.setSelectedReasoningEffort
   )
@@ -65,7 +69,10 @@ export function useChatModelSelection(
 
     setSelectedModel(
       nextModel.id,
-      clampReasoningEffort(effectiveReasoningEffort, nextModel.supportedReasoningEfforts)
+      clampReasoningEffort(
+        effectiveReasoningEffort,
+        nextModel.supportedReasoningEfforts
+      )
     )
   }
 

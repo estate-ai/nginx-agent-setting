@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest"
+import { buildToolPolicy } from "@/features/llm-chat/lib/tool-policy/build-tool-policy"
+import { buildToolPolicySummary } from "@/features/llm-chat/lib/tool-policy/build-tool-policy-summary"
 import {
   createToolPolicyState,
   llmChatTools,
 } from "@/features/llm-chat/testing/fixtures"
-import { buildToolPolicy } from "@/features/llm-chat/lib/tool-policy/build-tool-policy"
-import { buildToolPolicySummary } from "@/features/llm-chat/lib/tool-policy/build-tool-policy-summary"
 
 describe("buildToolPolicy", () => {
   it("marks allowed tools as auto and others as review", () => {

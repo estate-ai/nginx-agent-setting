@@ -1,6 +1,6 @@
+import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
 import { HitlDecisionToolbar } from "@/features/llm-chat/components/hitl/hitl-decision-toolbar"
 
 describe("HitlDecisionToolbar", () => {

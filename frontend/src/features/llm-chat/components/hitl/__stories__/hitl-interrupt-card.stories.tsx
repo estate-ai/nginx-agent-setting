@@ -1,7 +1,7 @@
-import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { expect, fn, userEvent } from "storybook/test"
-import { createHitlInterrupts } from "@/features/llm-chat/testing/fixtures"
+import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { HitlInterruptCard } from "@/features/llm-chat/components/hitl/hitl-interrupt-card"
+import { createHitlInterrupts } from "@/features/llm-chat/testing/fixtures"
 
 const meta = {
   title: "LLM Chat/HITL/HitlInterruptCard",

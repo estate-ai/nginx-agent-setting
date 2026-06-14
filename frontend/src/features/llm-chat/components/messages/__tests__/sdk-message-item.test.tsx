@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
+import { render, screen } from "@testing-library/react"
+import { SdkMessageItem } from "@/features/llm-chat/components/messages/sdk-message-item"
 import {
   createAssembledToolCall,
   createReasoningMessage,
@@ -7,7 +8,6 @@ import {
   createToolMessage,
   createUserMessage,
 } from "@/features/llm-chat/testing/fixtures"
-import { SdkMessageItem } from "@/features/llm-chat/components/messages/sdk-message-item"
 
 describe("SdkMessageItem", () => {
   it("renders reasoning separately from answer text", () => {

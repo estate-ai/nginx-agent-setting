@@ -1,13 +1,13 @@
 import { useState } from "react"
-import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { expect, userEvent, within } from "storybook/test"
-import {
-  createToolPolicyState,
-  llmChatTools,
-  llmChatModels,
-} from "@/features/llm-chat/testing/fixtures"
+import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { ChatComposer } from "@/features/llm-chat/components/composer/chat-composer"
 import { ChatModelMenu } from "@/features/llm-chat/components/composer/chat-model-menu"
+import {
+  createToolPolicyState,
+  llmChatModels,
+  llmChatTools,
+} from "@/features/llm-chat/testing/fixtures"
 import type { ChatReasoningEffort } from "@/features/llm-chat/types/chat-model-selection"
 
 function ChatComposerHarness({ disabled = false }: { disabled?: boolean }) {
@@ -15,7 +15,9 @@ function ChatComposerHarness({ disabled = false }: { disabled?: boolean }) {
   const [selectedModelId, setSelectedModelId] = useState(llmChatModels[0]!.id)
   const [selectedReasoningEffort, setSelectedReasoningEffort] =
     useState<ChatReasoningEffort>("medium")
-  const [allowedToolNames, setAllowedToolNames] = useState(new Set(["search_web"]))
+  const [allowedToolNames, setAllowedToolNames] = useState(
+    new Set(["search_web"])
+  )
 
   const selectedModel =
     llmChatModels.find((model) => model.id === selectedModelId) ??

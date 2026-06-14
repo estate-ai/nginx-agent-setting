@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { expect } from "storybook/test"
+import type { Meta, StoryObj } from "@storybook/nextjs-vite"
+import { SdkToolCallCard } from "@/features/llm-chat/components/messages/sdk-tool-call-card"
 import {
   createAssembledToolCall,
   createToolCall,
   createToolMessage,
 } from "@/features/llm-chat/testing/fixtures"
-import { SdkToolCallCard } from "@/features/llm-chat/components/messages/sdk-tool-call-card"
 
 const meta = {
   title: "LLM Chat/Messages/SdkToolCallCard",

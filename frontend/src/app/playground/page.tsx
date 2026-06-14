@@ -94,7 +94,10 @@ export default async function PlaygroundPage() {
       <ErrorBoundary FallbackComponent={PlaygroundErrorFallback}>
         <Suspense fallback={<PlaygroundSuspenseFallback />}>
           <HydrationBoundary state={dehydratedState}>
-            <PlaygroundClient apiOrigin={API_ORIGIN} serverAccessToken={accessToken} />
+            <PlaygroundClient
+              apiOrigin={API_ORIGIN}
+              serverAccessToken={accessToken}
+            />
           </HydrationBoundary>
         </Suspense>
       </ErrorBoundary>

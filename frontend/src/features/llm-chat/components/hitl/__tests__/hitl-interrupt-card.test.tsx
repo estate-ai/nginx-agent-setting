@@ -1,13 +1,16 @@
+import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
-import { createHitlInterrupts } from "@/features/llm-chat/testing/fixtures"
 import { HitlInterruptCard } from "@/features/llm-chat/components/hitl/hitl-interrupt-card"
+import { createHitlInterrupts } from "@/features/llm-chat/testing/fixtures"
 
 describe("HitlInterruptCard", () => {
   it("renders flattened action requests and allowed decisions", () => {
     render(
-      <HitlInterruptCard interrupts={createHitlInterrupts()} onDecide={vi.fn()} />
+      <HitlInterruptCard
+        interrupts={createHitlInterrupts()}
+        onDecide={vi.fn()}
+      />
     )
 
     expect(screen.getByText("send_email")).toBeInTheDocument()
@@ -16,7 +19,10 @@ describe("HitlInterruptCard", () => {
 
   it("shows the editor when the edit decision is selected", async () => {
     render(
-      <HitlInterruptCard interrupts={createHitlInterrupts()} onDecide={vi.fn()} />
+      <HitlInterruptCard
+        interrupts={createHitlInterrupts()}
+        onDecide={vi.fn()}
+      />
     )
 
     await userEvent.click(screen.getByRole("button", { name: /edit/i }))
@@ -28,7 +34,10 @@ describe("HitlInterruptCard", () => {
     const onDecide = vi.fn()
 
     render(
-      <HitlInterruptCard interrupts={createHitlInterrupts()} onDecide={onDecide} />
+      <HitlInterruptCard
+        interrupts={createHitlInterrupts()}
+        onDecide={onDecide}
+      />
     )
 
     await userEvent.click(screen.getByRole("button", { name: /respond/i }))

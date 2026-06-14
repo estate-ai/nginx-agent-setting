@@ -8,9 +8,7 @@ const EnvSchema = z.object({
   BETTER_AUTH_URL: z.string().min(1, "[env] BETTER_AUTH_URL is required"),
   DATABASE_URL: z.string().min(1, "[env] DATABASE_URL is required"),
 
-  KEYCLOAK_CLIENT_ID: z
-    .string()
-    .min(1, "[env] KEYCLOAK_CLIENT_ID is required"),
+  KEYCLOAK_CLIENT_ID: z.string().min(1, "[env] KEYCLOAK_CLIENT_ID is required"),
   KEYCLOAK_CLIENT_SECRET: z
     .string()
     .min(1, "[env] KEYCLOAK_CLIENT_SECRET is required"),

@@ -1,6 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { type PropsWithChildren, useState } from "react"
 import type { Preview } from "@storybook/nextjs-vite"
-import { useState, type PropsWithChildren } from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { queryConfig } from "@/shared/lib/react-query"
 import "../src/app/globals.css"
 

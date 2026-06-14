@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest"
-import { createHitlInterrupts } from "@/features/llm-chat/testing/fixtures"
 import { buildResumeDecisions } from "@/features/llm-chat/lib/hitl-decisions/build-resume-decisions"
 import { buildResumeDecisionsFromForm } from "@/features/llm-chat/lib/hitl-decisions/build-resume-decisions-from-form"
+import { createHitlInterrupts } from "@/features/llm-chat/testing/fixtures"
 
 describe("buildResumeDecisions", () => {
   const actionRequests = createHitlInterrupts()[0].value?.action_requests ?? []
 
   it("defaults to approve when no draft is provided", () => {
-    expect(buildResumeDecisions(actionRequests, {})).toEqual([{ type: "approve" }])
+    expect(buildResumeDecisions(actionRequests, {})).toEqual([
+      { type: "approve" },
+    ])
   })
 
   it("builds an edit decision", () => {
@@ -69,7 +71,8 @@ describe("buildResumeDecisions", () => {
 
 describe("buildResumeDecisionsFromForm", () => {
   it("delegates to buildResumeDecisions using form values", () => {
-    const actionRequests = createHitlInterrupts()[0].value?.action_requests ?? []
+    const actionRequests =
+      createHitlInterrupts()[0].value?.action_requests ?? []
 
     expect(
       buildResumeDecisionsFromForm(actionRequests, {

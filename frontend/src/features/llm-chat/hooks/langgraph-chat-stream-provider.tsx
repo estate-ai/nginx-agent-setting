@@ -1,11 +1,11 @@
 import { type ReactNode, useCallback, useMemo, useState } from "react"
 import { useStream } from "@langchain/react"
+import { authClient } from "@/features/auth/lib/auth-client"
+import { KEYCLOAK_PROVIDER_ID } from "@/features/auth/lib/auth-constants"
 import {
   LangGraphChatStreamContext,
   type LangGraphChatStreamContextValue,
 } from "@/features/llm-chat/hooks/langgraph-chat-stream-context"
-import { KEYCLOAK_PROVIDER_ID } from "@/features/auth/lib/auth-constants"
-import { authClient } from "@/features/auth/lib/auth-client"
 import { buildSubmitContext } from "@/features/llm-chat/lib/langgraph/build-submit-config"
 import { buildSubmitInput } from "@/features/llm-chat/lib/langgraph/build-submit-input"
 import type {

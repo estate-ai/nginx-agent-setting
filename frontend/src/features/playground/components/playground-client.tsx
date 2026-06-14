@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import { useErrorBoundary } from "react-error-boundary"
-import { KEYCLOAK_PROVIDER_ID } from "@/features/auth/lib/auth-constants"
 import { authClient } from "@/features/auth/lib/auth-client"
+import { KEYCLOAK_PROVIDER_ID } from "@/features/auth/lib/auth-constants"
 import { useGetEchoSuspense } from "@/shared/api/generated/echo/endpoints/echo/echo"
 import { useGetMeSuspense } from "@/shared/api/generated/profile/endpoints/profile/profile"
 import { Button } from "@/shared/components/ui/button"
@@ -87,7 +87,9 @@ export default function PlaygroundClient({
                 if (!token) {
                   setTokenPreview("")
                   showBoundary(
-                    new Error("Keycloak access token 조회 실패 (먼저 로그인해주세요)")
+                    new Error(
+                      "Keycloak access token 조회 실패 (먼저 로그인해주세요)"
+                    )
                   )
                   return
                 }

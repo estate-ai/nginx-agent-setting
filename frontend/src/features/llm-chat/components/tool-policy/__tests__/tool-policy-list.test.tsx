@@ -1,8 +1,8 @@
+import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
-import { llmChatTools } from "@/features/llm-chat/testing/fixtures"
 import { ToolPolicyList } from "@/features/llm-chat/components/tool-policy/tool-policy-list"
+import { llmChatTools } from "@/features/llm-chat/testing/fixtures"
 
 describe("ToolPolicyList", () => {
   it("renders one row per tool", () => {

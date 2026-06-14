@@ -7,7 +7,6 @@
 //
 // NOTE: Next.js Proxy는 Node.js runtime이 기본이며, proxy에서 runtime config 옵션은 사용 불가(공식).
 // https://nextjs.org/docs/app/api-reference/file-conventions/proxy :contentReference[oaicite:37]{index=37}
-
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import { auth } from "@/features/auth/lib/auth"

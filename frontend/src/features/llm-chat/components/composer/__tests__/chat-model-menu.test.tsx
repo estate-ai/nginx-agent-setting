@@ -1,8 +1,8 @@
+import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
-import { llmChatModels } from "@/features/llm-chat/testing/fixtures"
 import { ChatModelMenu } from "@/features/llm-chat/components/composer/chat-model-menu"
+import { llmChatModels } from "@/features/llm-chat/testing/fixtures"
 
 describe("ChatModelMenu", () => {
   it("shows the current model and reasoning effort", () => {
@@ -16,7 +16,9 @@ describe("ChatModelMenu", () => {
       />
     )
 
-    expect(screen.getByRole("button", { name: /gpt-5-mini/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /gpt-5-mini/i })
+    ).toBeInTheDocument()
     expect(screen.getByText("medium")).toBeInTheDocument()
   })
 
@@ -53,6 +55,8 @@ describe("ChatModelMenu", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /gpt-5-mini/i }))
 
-    expect(screen.queryByRole("button", { name: "high" })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "high" })
+    ).not.toBeInTheDocument()
   })
 })

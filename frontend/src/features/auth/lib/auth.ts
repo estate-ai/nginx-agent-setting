@@ -1,8 +1,8 @@
 // src/features/auth/lib/auth.ts
-import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { betterAuth } from "better-auth"
 import { nextCookies } from "better-auth/next-js"
 import { genericOAuth, keycloak } from "better-auth/plugins"
+import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { env } from "@/shared/config/env"
 import { db } from "@/shared/db"
 import * as schema from "@/shared/db/schema"

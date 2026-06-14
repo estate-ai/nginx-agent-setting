@@ -1,7 +1,7 @@
 // src/features/auth/lib/server-access-token.ts
 import { headers } from "next/headers"
-import { KEYCLOAK_PROVIDER_ID } from "./auth-constants"
 import { auth } from "./auth"
+import { KEYCLOAK_PROVIDER_ID } from "./auth-constants"
 
 type AccessTokenResult = {
   accessToken?: string

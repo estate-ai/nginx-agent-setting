@@ -1,6 +1,6 @@
+import { z } from "zod"
 import { AnimalsShell } from "@/app/(intercept-test)/animals/_components/animals-shell"
 import { getAnimals } from "@/app/(intercept-test)/animals/_services/animal-service"
-import { z } from "zod"
 
 const AnimalsSearchParamsSchema = z.object({
   q: z.preprocess(

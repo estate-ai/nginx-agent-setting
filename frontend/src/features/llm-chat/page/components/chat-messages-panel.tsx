@@ -5,14 +5,8 @@ import { useLangGraphChatStream } from "@/features/llm-chat/hooks/use-langgraph-
 import { Alert, AlertDescription } from "@/shared/components/ui/alert"
 
 export function ChatMessagesPanel() {
-  const {
-    hitlInterrupts,
-    isBusy,
-    localNotice,
-    messages,
-    resume,
-    toolCalls,
-  } = useLangGraphChatStream()
+  const { hitlInterrupts, isBusy, localNotice, messages, resume, toolCalls } =
+    useLangGraphChatStream()
 
   return (
     <section className="relative min-h-0 flex-1 overflow-hidden bg-muted/20">
