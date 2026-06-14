@@ -105,8 +105,6 @@ services:
       - app.api.publicPath=/api/profile
       - app.api.openapiPath=/v3/api-docs
       - app.api.schemasType=zod
-    depends_on:
-      - keycloak
 
   echo-service:
     build: ./backend/services/echo-service
@@ -128,8 +126,6 @@ services:
       - app.api.publicPath=/api/echo
       - app.api.openapiPath=/v3/api-docs
       - app.api.schemasType=zod
-    depends_on:
-      - profile-service
 
   community-db:
     image: postgres:17-alpine

@@ -153,6 +153,15 @@ app.get("/me", async (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[profile-service] listening on :${PORT}`)
+})
+
+// Docker 환경에서 Node.js가 PID 1로 실행될 때 SIGTERM 시그널을 기본적으로 무시하여
+// 컨테이너 종료(Recreate 등) 시 10초 타임아웃 대기가 발생하는 것을 방지하기 위한 핸들러입니다.
+process.on("SIGTERM", () => {
+  console.log("[profile-service] SIGTERM received. Shutting down gracefully...");
+  server.close(() => {
+    process.exit(0);
+  });
 })
