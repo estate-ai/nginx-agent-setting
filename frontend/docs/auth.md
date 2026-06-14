@@ -153,7 +153,7 @@ verification
 
 ## Keycloak Google Identity Provider
 
-Google OAuth credentials are now registered in Keycloak, not directly in Better Auth. Keep `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the repo root `.env` for `docker compose` and mirror them in `frontend/.env` if you want the frontend env file to keep the same values documented.
+Google OAuth credentials are now registered in Keycloak, not directly in Better Auth. Keep `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` only in the repo root `.env` for `docker compose`.
 
 Google Cloud Console redirect URI:
 
