@@ -115,6 +115,7 @@ jobs:
           WORKTREE="/tmp/codex-review-worktree-${PR_NUMBER}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           PROMPT_FILE="/tmp/codex-review-prompt-${PR_NUMBER}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.txt"
           SCHEMA_FILE="/tmp/codex-review-schema-${PR_NUMBER}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+          BASE_REVIEW_REF="refs/remotes/origin/codex-base-${PR_NUMBER}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           PR_REF="refs/remotes/origin/codex-pr-${PR_NUMBER}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
           echo "REVIEW_FILE=$REVIEW_FILE" >> "$GITHUB_ENV"
@@ -139,6 +140,7 @@ jobs:
             -e WORKTREE="$WORKTREE" \
             -e PROMPT_FILE="$PROMPT_FILE" \
             -e SCHEMA_FILE="$SCHEMA_FILE" \
+            -e BASE_REVIEW_REF="$BASE_REVIEW_REF" \
             -e PR_REF="$PR_REF" \
             code-server sh -s <<'CONTAINER_SCRIPT'
           set -eu
@@ -147,6 +149,7 @@ jobs:
 
           cleanup() {
             git -C "$REPO_DIR" worktree remove --force "$WORKTREE" >/dev/null 2>&1 || true
+            git -C "$REPO_DIR" update-ref -d "$BASE_REVIEW_REF" >/dev/null 2>&1 || true
             git -C "$REPO_DIR" update-ref -d "$PR_REF" >/dev/null 2>&1 || true
             rm -f "$PROMPT_FILE" "$SCHEMA_FILE" >/dev/null 2>&1 || true
           }
@@ -158,16 +161,17 @@ jobs:
           # 기존 code-server 작업 브랜치/변경사항은 건드리지 않고, PR 코드만 임시 worktree에 분리
           git worktree remove --force "$WORKTREE" >/dev/null 2>&1 || true
           git worktree prune >/dev/null 2>&1 || true
+          git update-ref -d "$BASE_REVIEW_REF" >/dev/null 2>&1 || true
           git update-ref -d "$PR_REF" >/dev/null 2>&1 || true
           rm -f "$CONTAINER_REVIEW_FILE"
 
-          # base 브랜치 최신 상태 가져오기
+          # 공유 origin/main 같은 tracking ref를 건드리지 않고, 리뷰용 base ref만 가져온다.
           git fetch "https://x-access-token:${GH_TOKEN}@github.com/market-fit-team/market-fit.git" \
-            "${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+            "+${BASE_REF}:${BASE_REVIEW_REF}"
 
           # PR head를 임시 ref로 가져오기
           git fetch "https://x-access-token:${GH_TOKEN}@github.com/market-fit-team/market-fit.git" \
-            "pull/${PR_NUMBER}/head:${PR_REF}"
+            "+pull/${PR_NUMBER}/head:${PR_REF}"
 
           # 리뷰 시작 후 새 커밋이 push되었다면 서로 다른 SHA의 diff와 API payload를 섞지 않는다.
           # 사용자가 최신 커밋에서 /code-review를 다시 실행하도록 명시적으로 실패시킨다.
@@ -263,7 +267,7 @@ jobs:
 
           # Codex에게 GitHub inline review에 바로 쓸 수 있는 JSON만 만들게 함
           cat > "$PROMPT_FILE" <<PROMPT
-          origin/${BASE_REF}...HEAD 범위의 머지될 변경사항만 코드리뷰해줘.
+          ${BASE_REVIEW_REF}...HEAD 범위의 머지될 변경사항만 코드리뷰해줘.
 
           사용자 메시지:
           ${REVIEW_REQUEST:-추가 요청 없음}
@@ -302,7 +306,7 @@ jobs:
           - 정확한 수정안을 제시하기 어렵고 설명만 필요한 리뷰는 suggestion을 null로 써.
           - suggestion은 선택한 한 줄 또는 start_line부터 line까지의 전체 범위를 통째로 대체한다는 점을 고려해.
           - comments가 없으면 빈 배열로 둬.
-          - 반드시 git diff origin/${BASE_REF}...HEAD를 직접 읽은 뒤에만 review_status를 completed로 써.
+          - 반드시 git diff ${BASE_REVIEW_REF}...HEAD를 직접 읽은 뒤에만 review_status를 completed로 써.
           - 저장소나 diff를 읽지 못했으면 review_status를 blocked로 쓰고 failure_reason에 원인을 적어.
           - 최종 출력은 JSON만. 마크다운 코드블록 금지.
 
