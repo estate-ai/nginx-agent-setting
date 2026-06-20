@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Avatar from "boring-avatars"
 import { LogOut } from "lucide-react"
@@ -20,7 +21,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu"
@@ -39,6 +39,7 @@ export function HeaderAuthLogoutButton({
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const resolvedUserName = userName?.trim() || "내 계정"
+  const avatarSize = 36
 
   return (
     <AlertDialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
@@ -46,24 +47,28 @@ export function HeaderAuthLogoutButton({
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            size="icon-lg"
-            className="rounded-full p-0"
+            className="overflow-hidden rounded-full p-0"
+            style={{ width: avatarSize, height: avatarSize }}
             title={resolvedUserName}
             aria-label={`${resolvedUserName} 메뉴`}
           >
             <Avatar
+              className="size-full"
               colors={avatarColors}
               name={avatarSeed}
-              size={24}
+              size={avatarSize}
               variant="beam"
             />
           </Button>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuLabel className="truncate">
-            {resolvedUserName}
-          </DropdownMenuLabel>
+          <DropdownMenuItem asChild>
+            <Link href="/profile">프로필 수정</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/mypage">내 페이지</Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
