@@ -5,8 +5,6 @@ import PlaygroundClient from "@/app/example/playground/_components/playground-cl
 import { auth } from "@/features/auth/lib/auth"
 import { AUTHENTIK_PROVIDER_ID } from "@/features/auth/lib/auth-constants"
 import { getServerSession } from "@/features/auth/lib/server-session"
-import { coreUsersMeRetrieve } from "@/shared/api/generated/authentik-users/endpoints/core/core"
-import type { SessionUser } from "@/shared/api/generated/authentik-users/schemas/session-user"
 import {
   Card,
   CardContent,
@@ -53,22 +51,6 @@ const decodeJwtPayload = (token: string): JwtPayload => {
   ) as JwtPayload
 }
 
-// Authentik 사용자 정보는 Better Auth session.user가 아니라 generated endpoint 계약을 통해 직접 조회한다.
-async function getServerAuthentikUser(
-  accessToken: string | null
-): Promise<SessionUser | null> {
-  if (!accessToken) {
-    return null
-  }
-
-  return coreUsersMeRetrieve({
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-  })
-}
-
 // 서버/클라이언트 섹션을 같은 시각 구조로 맞춰 비교하기 쉽게 만든 공용 출력 카드다.
 function PlaygroundSection({
   title,
@@ -103,8 +85,6 @@ export default async function PlaygroundPage() {
   let accessToken: string | null = null
   let parsedJwt: JwtPayload | null = null
   let parsedJwtError: string | null = null
-  let authentikUser: SessionUser | null = null
-  let authentikUserError: string | null = null
 
   try {
     // 서버에서는 Better Auth API로 access token을 직접 가져와 SSR 시점 정보를 보여준다.
@@ -126,13 +106,6 @@ export default async function PlaygroundPage() {
       parsedJwt = decodeJwtPayload(accessToken)
     } catch (error) {
       parsedJwtError = getErrorMessage(error)
-    }
-
-    try {
-      // 서버에서도 generated Authentik API를 호출해 JWT 기반 정보와 실제 /me 응답을 비교한다.
-      authentikUser = await getServerAuthentikUser(accessToken)
-    } catch (error) {
-      authentikUserError = getErrorMessage(error)
     }
   } else if (!accessTokenError) {
     accessTokenError = "access token 없음"
@@ -159,10 +132,6 @@ export default async function PlaygroundPage() {
 
         <PlaygroundSection title="서버 JWT 파싱 결과">
           {parsedJwtError ?? formatJson(parsedJwt)}
-        </PlaygroundSection>
-
-        <PlaygroundSection title="서버 Authentik 사용자 정보 (generated function)">
-          {authentikUserError ?? formatJson(authentikUser)}
         </PlaygroundSection>
       </section>
 

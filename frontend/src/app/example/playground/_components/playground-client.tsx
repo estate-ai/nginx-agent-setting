@@ -4,20 +4,11 @@ import { type ReactNode, useEffect, useMemo, useState } from "react"
 import { authClient } from "@/features/auth/lib/auth-client"
 import { AUTHENTIK_PROVIDER_ID } from "@/features/auth/lib/auth-constants"
 import {
-  type CoreUsersMeRetrieveQueryError,
-  useCoreUsersMeRetrieve,
-} from "@/shared/api/generated/authentik-users/endpoints/core/core"
-import type { SessionUser } from "@/shared/api/generated/authentik-users/schemas/session-user"
-import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/shared/components/ui/card"
-import {
-  PlaygroundErrorFallback,
-  PlaygroundLoadingFallback,
-} from "./playground-fallback"
 
 type JwtPayload = {
   [key: string]: unknown
@@ -158,26 +149,6 @@ export default function PlaygroundClient() {
     }
   }, [accessToken])
 
-  // Authentik 사용자 정보는 generated hook으로 직접 읽어 Better Auth 세션과 분리된 원본 응답을 보여준다.
-  const authentikUserQuery = useCoreUsersMeRetrieve({
-    query: {
-      enabled: Boolean(accessToken),
-      retry: false,
-    },
-    request: accessToken
-      ? {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          cache: "no-store",
-        }
-      : undefined,
-  })
-
-  const authentikUser: SessionUser | null = authentikUserQuery.data ?? null
-  const authentikUserError: CoreUsersMeRetrieveQueryError | null =
-    authentikUserQuery.error ?? null
-
   return (
     <section className="grid gap-6 lg:grid-cols-3">
       <PlaygroundSection title="클라이언트 세션 (useSession)">
@@ -199,26 +170,6 @@ export default function PlaygroundClient() {
             ? (accessTokenError ?? parsedJwtResult.error)
             : formatJson(parsedJwtResult.payload)}
       </PlaygroundSection>
-
-      {isAccessTokenPending ? (
-        <PlaygroundLoadingFallback
-          title="클라이언트 Authentik 사용자 조회"
-          description="access token이 준비되면 generated hook으로 /core/users/me/를 호출합니다."
-        />
-      ) : accessTokenError ? (
-        <PlaygroundErrorFallback
-          title="클라이언트 Authentik 사용자 조회"
-          description={accessTokenError}
-        />
-      ) : (
-        <PlaygroundSection title="클라이언트 Authentik 사용자 정보 (generated hook)">
-          {authentikUserQuery.isPending
-            ? "Authentik 사용자 정보를 불러오는 중..."
-            : authentikUserError
-              ? formatJson(authentikUserError)
-              : formatJson(authentikUser)}
-        </PlaygroundSection>
-      )}
     </section>
   )
 }
