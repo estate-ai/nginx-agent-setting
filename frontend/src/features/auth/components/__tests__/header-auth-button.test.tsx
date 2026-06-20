@@ -1,18 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { HeaderAuthButton } from "@/features/auth/components/header-auth-button"
+import { HeaderAuthButton } from "@/features/auth/components/header/header-auth-button"
+import { HeaderAuthButtonFallback } from "@/features/auth/components/header/header-auth-button-fallback"
+import { HeaderAuthLoginButton } from "@/features/auth/components/header/header-auth-login-button"
+import { HeaderAuthLogoutButton } from "@/features/auth/components/header/header-auth-logout-button"
 
-const { pushMock, signOutMock, usePathnameMock, useSessionMock } = vi.hoisted(
-  () => {
+const { getServerSessionMock, pushMock, signOutMock, usePathnameMock } =
+  vi.hoisted(() => {
     return {
+      getServerSessionMock: vi.fn(),
       pushMock: vi.fn(),
       signOutMock: vi.fn(),
       usePathnameMock: vi.fn(),
-      useSessionMock: vi.fn(),
     }
-  }
-)
+  })
 
 vi.mock("next/navigation", () => ({
   usePathname: usePathnameMock,
@@ -22,28 +24,24 @@ vi.mock("next/navigation", () => ({
 }))
 
 vi.mock("@/features/auth/lib/auth-client", () => ({
-  authClient: {
-    useSession: useSessionMock,
-    signOut: signOutMock,
-  },
+  signOut: signOutMock,
 }))
 
-describe("HeaderAuthButton", () => {
+vi.mock("@/features/auth/lib/server-session", () => ({
+  getServerSession: getServerSessionMock,
+}))
+
+describe("Header auth buttons", () => {
   beforeEach(() => {
+    getServerSessionMock.mockReset()
     pushMock.mockReset()
     signOutMock.mockReset()
     usePathnameMock.mockReset()
-    useSessionMock.mockReset()
     usePathnameMock.mockReturnValue("/map")
   })
 
   it("renders a login link with the current pathname as callbackURL", () => {
-    useSessionMock.mockReturnValue({
-      data: null,
-      isPending: false,
-    })
-
-    render(<HeaderAuthButton />)
+    render(<HeaderAuthLoginButton />)
 
     expect(screen.getByRole("link", { name: "로그인" })).toHaveAttribute(
       "href",
@@ -51,44 +49,24 @@ describe("HeaderAuthButton", () => {
     )
   })
 
-  it("renders a disabled placeholder button while the session is pending", () => {
-    useSessionMock.mockReturnValue({
-      data: null,
-      isPending: true,
-    })
+  it("renders a skeleton fallback instead of the old spinner", () => {
+    const { container } = render(<HeaderAuthButtonFallback />)
 
-    render(<HeaderAuthButton />)
-
-    expect(
-      screen.getByRole("button", { name: "로그인 상태 확인 중" })
-    ).toBeDisabled()
-    expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument()
-    expect(screen.queryByText("Loading session...")).not.toBeInTheDocument()
+    expect(container.firstChild).toHaveAttribute("data-slot", "skeleton")
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
   })
 
   it("signs the user out and redirects to root", async () => {
-    useSessionMock.mockReturnValue({
-      data: {
-        user: {
-          id: "user-1",
-        },
-      },
-      isPending: false,
-    })
     signOutMock.mockImplementation(
       async (options?: { fetchOptions?: { onSuccess?: () => void } }) => {
         options?.fetchOptions?.onSuccess?.()
       }
     )
 
-    render(<HeaderAuthButton />)
+    render(<HeaderAuthLogoutButton userName="홍길동" />)
 
     await userEvent.click(screen.getByRole("button", { name: "로그아웃" }))
     expect(signOutMock).not.toHaveBeenCalled()
-
-    expect(
-      screen.getByRole("alertdialog", { name: "로그아웃 하시겠습니까?" })
-    ).toBeInTheDocument()
 
     const alertDialog = screen.getByRole("alertdialog", {
       name: "로그아웃 하시겠습니까?",
@@ -104,5 +82,31 @@ describe("HeaderAuthButton", () => {
       },
     })
     expect(pushMock).toHaveBeenCalledWith("/")
+  })
+
+  it("renders the login button when the server session is missing", async () => {
+    getServerSessionMock.mockResolvedValue(null)
+
+    render(await HeaderAuthButton())
+
+    expect(screen.getByRole("link", { name: "로그인" })).toHaveAttribute(
+      "href",
+      "/login?callbackURL=%2Fmap"
+    )
+  })
+
+  it("renders the logout button when the server session exists", async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: {
+        name: "홍길동",
+      },
+    })
+
+    render(await HeaderAuthButton())
+
+    expect(screen.getByRole("button", { name: "로그아웃" })).toHaveAttribute(
+      "title",
+      "홍길동"
+    )
   })
 })
