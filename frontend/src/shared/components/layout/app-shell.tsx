@@ -1,49 +1,33 @@
-"use client"
-
-import React from "react"
+import { Suspense } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { HeaderAuthButton } from "@/features/auth/components/header/header-auth-button"
+import { HeaderAuthButtonFallback } from "@/features/auth/components/header/header-auth-button-fallback"
 import {
-  FileSpreadsheet,
-  LayoutDashboard,
-  Map,
-  MessageCircleQuestion,
-} from "lucide-react"
-import { HeaderAuthButton } from "@/features/auth/components/header-auth-button"
+  HeaderNavButton,
+  type HeaderNavButtonProps,
+} from "@/shared/components/layout/header-nav-button"
 import { Badge } from "@/shared/components/ui/badge"
-import { buttonVariants } from "@/shared/components/ui/button"
-import { cn } from "@/shared/lib/utils"
+
+const NAV_ITEMS: HeaderNavButtonProps[] = [
+  {
+    label: "홈",
+    href: "/",
+  },
+  {
+    label: "성향분석",
+    href: "/onboarding",
+  },
+  {
+    label: "상권지도",
+    href: "/map",
+  },
+  {
+    label: "AI 리포트",
+    href: "/report",
+  },
+]
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-
-  const navItems = [
-    {
-      label: "홈",
-      href: "/",
-      icon: LayoutDashboard,
-      active: pathname === "/",
-    },
-    {
-      label: "성향분석",
-      href: "/onboarding",
-      icon: MessageCircleQuestion,
-      active: pathname === "/onboarding",
-    },
-    {
-      label: "상권지도",
-      href: "/map",
-      icon: Map,
-      active: pathname === "/map",
-    },
-    {
-      label: "AI 리포트",
-      href: "/report",
-      icon: FileSpreadsheet,
-      active: pathname.startsWith("/report"),
-    },
-  ]
-
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground antialiased selection:bg-primary selection:text-primary-foreground">
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
@@ -59,29 +43,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <nav className="flex items-center gap-1 sm:gap-2">
-              {navItems.map((item) => {
-                const Icon = item.icon
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      buttonVariants({
-                        variant: item.active ? "secondary" : "ghost",
-                        size: "lg",
-                      }),
-                      "px-3"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{item.label}</span>
-                  </Link>
-                )
+              {NAV_ITEMS.map((item) => {
+                return <HeaderNavButton key={item.href} {...item} />
               })}
             </nav>
 
             <div className="flex items-center">
-              <HeaderAuthButton />
+              <Suspense fallback={<HeaderAuthButtonFallback />}>
+                <HeaderAuthButton />
+              </Suspense>
             </div>
           </div>
         </div>
