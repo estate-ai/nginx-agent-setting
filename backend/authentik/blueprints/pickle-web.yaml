@@ -9,6 +9,53 @@ metadata:
     blueprints.goauthentik.io/description: Bootstrap Pickle Web OIDC provider and Google OAuth source
 
 entries:
+  # Internal MSA service account for authentik user REST API access.
+  - model: authentik_rbac.role
+    state: present
+    identifiers:
+      name: msa-user-api-manager
+    id: msa-user-api-manager-role
+    attrs:
+      name: msa-user-api-manager
+      managed: pickle-web/msa-user-api-manager
+
+  - model: authentik_rbac.initialpermissions
+    state: present
+    identifiers:
+      name: msa-user-api-manager-user-permissions
+    attrs:
+      name: msa-user-api-manager-user-permissions
+      role: !KeyOf msa-user-api-manager-role
+      permissions:
+        - !Find [auth.permission, [codename, view_user]]
+        - !Find [auth.permission, [codename, change_user]]
+
+  - model: authentik_core.user
+    state: present
+    identifiers:
+      username: svc-msa-user-api
+    id: msa-user-api-service-account
+    attrs:
+      username: svc-msa-user-api
+      name: MSA User API Service Account
+      email: svc-msa-user-api@localhost
+      is_active: true
+      path: goauthentik.io/services
+      roles:
+        - !KeyOf msa-user-api-manager-role
+
+  - model: authentik_core.token
+    state: present
+    identifiers:
+      identifier: msa-user-api-token
+    attrs:
+      identifier: msa-user-api-token
+      intent: api
+      user: !KeyOf msa-user-api-service-account
+      expiring: false
+      description: Internal MSA token for authentik user API access
+      key: !Env AUTHENTIK_MSA_USER_API_TOKEN
+
   - model: authentik_policies_expression.expressionpolicy
     state: present
     identifiers:
