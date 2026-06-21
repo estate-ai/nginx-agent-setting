@@ -9,20 +9,17 @@ export type MapFocusRequest = {
 export type MapInteractionSlice = {
   hoveredDongCode: DongCode | null
   mapFocusRequest: MapFocusRequest | null
-  selectedDongCode: DongCode | null
   clearPolygonHover: () => void
   focusMapOnDong: (dongCode: DongCode) => void
   hoverDong: (hoveredDongCode: DongCode | null) => void
-  selectDong: (selectedDongCode: DongCode | null) => void
 }
 
-// polygon 상태는 hover와 select를 분리해서 관리
+// 지도 표면의 일시적 제스처(hover, 이동)만 관리
 export const createMapInteractionSlice: StateCreator<MapInteractionSlice> = (
   set
 ) => ({
   hoveredDongCode: null,
   mapFocusRequest: null,
-  selectedDongCode: null,
   clearPolygonHover: () =>
     set({
       hoveredDongCode: null,
@@ -37,9 +34,5 @@ export const createMapInteractionSlice: StateCreator<MapInteractionSlice> = (
   hoverDong: (hoveredDongCode) =>
     set({
       hoveredDongCode,
-    }),
-  selectDong: (selectedDongCode) =>
-    set({
-      selectedDongCode,
     }),
 })
