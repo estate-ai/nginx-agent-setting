@@ -7,6 +7,7 @@ import { CanvasWidget } from "@/features/map/components/canvas-widget/canvas-wid
 import { DetailWidget } from "@/features/map/components/detail-widget/detail-widget"
 import { ExploreWidget } from "@/features/map/components/explore-widget/explore-widget"
 import { FilterWidget } from "@/features/map/components/filter-widget/filter-widget"
+import { useRecommendedAreas } from "@/features/map/hooks/use-recommended-areas"
 import { getPersistedPersona } from "@/features/map/lib/get-initial-trade-area"
 import { getSelectedTradeArea } from "@/features/map/lib/map-selectors"
 import { useMapStore } from "@/features/map/store/map-store"
@@ -26,6 +27,7 @@ export function MapView() {
     (state) => state.setRecommendationsOnly
   )
   const selectedTradeArea = getSelectedTradeArea(selectedDongCode)
+  const hasRecommendations = useRecommendedAreas().length > 0
 
   useEffect(() => {
     const nextPersona = personaQuery || getPersistedPersona()
@@ -48,10 +50,12 @@ export function MapView() {
         <CanvasWidget />
       </div>
 
-      {/* 상단 필터 바: 추천 목록을 2차 검색하는 바. */}
-      <div className="absolute top-4 right-4 left-4 z-20">
-        <FilterWidget />
-      </div>
+      {/* 상단 필터 바: 추천 목록을 2차 검색하는 바. 추천이 없으면 노출하지 않는다. */}
+      {hasRecommendations && (
+        <div className="absolute top-4 right-4 left-4 z-20">
+          <FilterWidget />
+        </div>
+      )}
 
       {/* 왼쪽 패널: 공통 토글 헤더로 추천 목록과 AI 채팅을 한 자리에서 전환한다. */}
       {isLeftPanelOpen ? (
