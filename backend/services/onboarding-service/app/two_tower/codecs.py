@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from string import digits, ascii_uppercase
 from typing import Any
 
@@ -8,20 +9,32 @@ from app.two_tower.contracts import UserProfilePayload
 
 BASE36_ALPHABET = digits + ascii_uppercase
 PROFILE_CODE_PREFIX = "r"
-PROFILE_CODE_VERSION = 2
+PROFILE_CODE_VERSION = 3
 SHARED_PROFILE_NAME = "공유 코드 프로필"
 LEGACY_PROFILE_CODE_VERSION = 1
+PREVIOUS_PROFILE_CODE_VERSION = 2
+SURVEY_AWARE_PROFILE_CODE_VERSION = 3
 LEGACY_SCORE_LEVELS = 5
 PROFILE_SCORE_BUCKETS = 101
 PROFILE_GROUP_SIZE = 3
 LEGACY_GROUP_WIDTH = 2
 PROFILE_GROUP_WIDTH = 4
+DEFAULT_SURVEY_CODE = "0"
 
 _CATEGORY_INDEX_BY_CODE = {option["code"]: index for index, option in enumerate(CATEGORY_OPTIONS)}
 
 
 class InvalidProfileCodeError(ValueError):
     """프로필 공유 코드 형식이 잘못됐을 때 사용한다."""
+
+
+@dataclass(frozen=True)
+class DecodedProfileCode:
+    profile_code: str
+    version: int
+    survey_code: str | None
+    preferred_category_code: str
+    user_profile: dict[str, Any]
 
 
 def _int_to_base36(value: int, width: int = 1) -> str:
@@ -82,11 +95,22 @@ def build_share_path(profile_code: str) -> str:
     return f"/example/two-tower/{profile_code}"
 
 
-def encode_profile_code(profile: UserProfilePayload | dict[str, Any]) -> str:
+def _validate_survey_code(survey_code: str) -> str:
+    normalized = survey_code.strip().upper()
+    if len(normalized) != 1 or normalized not in BASE36_ALPHABET:
+        raise InvalidProfileCodeError("설문 코드는 base36 1글자여야 한다.")
+    return normalized
+
+
+def encode_profile_code(
+    profile: UserProfilePayload | dict[str, Any],
+    survey_code: str = DEFAULT_SURVEY_CODE,
+) -> str:
     payload = UserProfilePayload.model_validate(profile).model_dump()
     category_index = _CATEGORY_INDEX_BY_CODE.get(payload["preferred_category_code"])
     if category_index is None:
         raise InvalidProfileCodeError("등록되지 않은 업종 코드는 공유 코드로 변환할 수 없다.")
+    normalized_survey_code = _validate_survey_code(survey_code)
 
     chunks = []
     for offset in range(0, len(USER_NUMERIC_FIELDS), PROFILE_GROUP_SIZE):
@@ -97,18 +121,28 @@ def encode_profile_code(profile: UserProfilePayload | dict[str, Any]) -> str:
     return (
         f"{PROFILE_CODE_PREFIX}"
         f"{_int_to_base36(PROFILE_CODE_VERSION)}"
+        f"{normalized_survey_code}"
         f"{_int_to_base36(category_index)}"
         f"{''.join(chunks)}"
-    )
+    ).lower()
 
 
-def decode_profile_code(profile_code: str) -> dict[str, Any]:
+def decode_profile_code_details(profile_code: str) -> DecodedProfileCode:
     normalized = profile_code.strip().upper()
     if len(normalized) < 3 or not normalized.startswith(PROFILE_CODE_PREFIX.upper()):
         raise InvalidProfileCodeError("공유 코드 길이 또는 접두사가 올바르지 않다.")
 
     version = _base36_to_int(normalized[1])
-    category_index = _base36_to_int(normalized[2])
+    survey_code: str | None = None
+    category_index_position = 2
+
+    if version == SURVEY_AWARE_PROFILE_CODE_VERSION:
+        if len(normalized) != 16:
+            raise InvalidProfileCodeError("공유 코드 길이가 올바르지 않다.")
+        survey_code = _validate_survey_code(normalized[2])
+        category_index_position = 3
+
+    category_index = _base36_to_int(normalized[category_index_position])
     if category_index >= len(CATEGORY_OPTIONS):
         raise InvalidProfileCodeError("업종 인덱스가 범위를 벗어났다.")
 
@@ -118,10 +152,13 @@ def decode_profile_code(profile_code: str) -> dict[str, Any]:
             raise InvalidProfileCodeError("레거시 공유 코드 길이가 올바르지 않다.")
         for start in range(3, 9, LEGACY_GROUP_WIDTH):
             decoded_scores.extend(_decode_legacy_score_group(normalized[start : start + LEGACY_GROUP_WIDTH]))
-    elif version == PROFILE_CODE_VERSION:
+    elif version == PREVIOUS_PROFILE_CODE_VERSION:
         if len(normalized) != 15:
             raise InvalidProfileCodeError("공유 코드 길이가 올바르지 않다.")
         for start in range(3, 15, PROFILE_GROUP_WIDTH):
+            decoded_scores.extend(_decode_score_group(normalized[start : start + PROFILE_GROUP_WIDTH]))
+    elif version == SURVEY_AWARE_PROFILE_CODE_VERSION:
+        for start in range(4, 16, PROFILE_GROUP_WIDTH):
             decoded_scores.extend(_decode_score_group(normalized[start : start + PROFILE_GROUP_WIDTH]))
     else:
         raise InvalidProfileCodeError("지원하지 않는 공유 코드 버전이다.")
@@ -134,4 +171,15 @@ def decode_profile_code(profile_code: str) -> dict[str, Any]:
     }
     for field_name, value in zip(USER_NUMERIC_FIELDS, decoded_scores, strict=True):
         payload[field_name] = value
-    return UserProfilePayload.model_validate(payload).model_dump()
+    normalized_payload = UserProfilePayload.model_validate(payload).model_dump()
+    return DecodedProfileCode(
+        profile_code=normalized.lower(),
+        version=version,
+        survey_code=survey_code,
+        preferred_category_code=category_code,
+        user_profile=normalized_payload,
+    )
+
+
+def decode_profile_code(profile_code: str) -> dict[str, Any]:
+    return decode_profile_code_details(profile_code).user_profile

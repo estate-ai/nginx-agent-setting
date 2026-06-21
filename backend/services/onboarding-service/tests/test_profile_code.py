@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import unittest
 
-from app.two_tower.codecs import decode_profile_code, encode_profile_code
+from app.two_tower.codecs import decode_profile_code, decode_profile_code_details, encode_profile_code
 
 
 class ProfileCodeTestCase(unittest.TestCase):
-    def test_profile_code_roundtrip_preserves_category_and_scores(self) -> None:
-        """공유 코드는 업종과 9개 점수를 손실 없이 왕복 복원해야 한다."""
+    def test_profile_code_roundtrip_preserves_survey_category_and_scores(self) -> None:
+        """공유 코드는 설문 코드, 업종, 9개 점수를 손실 없이 왕복 복원해야 한다."""
 
         payload = {
             "user_id": "roundtrip-user",
@@ -24,10 +24,12 @@ class ProfileCodeTestCase(unittest.TestCase):
             "competition_tolerance_level": 0.05,
         }
 
-        profile_code = encode_profile_code(payload)
+        profile_code = encode_profile_code(payload, survey_code="A")
         decoded = decode_profile_code(profile_code)
+        decoded_details = decode_profile_code_details(profile_code)
 
-        self.assertEqual(len(profile_code), 15)
+        self.assertEqual(len(profile_code), 16)
+        self.assertEqual(decoded_details.survey_code, "A")
         self.assertEqual(decoded["preferred_category_code"], payload["preferred_category_code"])
         self.assertAlmostEqual(decoded["budget_level"], payload["budget_level"])
         self.assertAlmostEqual(decoded["competition_tolerance_level"], payload["competition_tolerance_level"])

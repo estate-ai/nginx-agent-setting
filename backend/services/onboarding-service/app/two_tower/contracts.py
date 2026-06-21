@@ -127,6 +127,7 @@ class PredictResponse(BaseModel):
     top_k: int
     profile_code: str
     profile_schema_version: int
+    survey_code: str | None = None
     share_path: str
     share_url: str
     user_profile: UserProfilePayload
@@ -137,6 +138,11 @@ class StoredUserTowerProfile(BaseModel):
     auth_user_uuid: str | None
     profile_code: str
     profile_schema_version: int
+    survey_response_id: int | None = None
+    survey_slug: str | None = None
+    survey_version: int | None = None
+    survey_code: str | None = None
+    scoring_version: str | None = None
     share_path: str
     share_url: str
     source: str
