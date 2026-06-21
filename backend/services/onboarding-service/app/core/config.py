@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     database_echo: bool = False
     auto_create_schema: bool = True
     demo_auth_user_uuid: str = "123e4567-e89b-12d3-a456-426614174000"
+    jwks_url: str = "http://authentik-server:9000/application/o/pickle-web/jwks/"
+    jwt_issuer: str = "http://localhost:9000/application/o/pickle-web/"
+    jwt_audience: str = "pickle-web"
+    jwt_algorithm: str = "RS256"
+    expose_legacy_two_tower_routes: bool = False
+    expose_internal_model_admin_routes: bool = False
     bootstrap_train_if_missing: bool = True
     bootstrap_train_epochs: int = 1
     bootstrap_seed_demo_profile: bool = False

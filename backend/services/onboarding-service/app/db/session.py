@@ -47,6 +47,11 @@ async def prepare_database() -> None:
         return
     async with get_engine().begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
+    async with get_session_factory()() as session:
+        from app.surveys.service import seed_active_survey_definition
+
+        await seed_active_survey_definition(session)
+        await session.commit()
 
 
 async def dispose_database() -> None:

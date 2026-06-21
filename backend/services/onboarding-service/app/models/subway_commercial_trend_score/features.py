@@ -47,7 +47,9 @@ def find_csv_by_columns(data_dir: Path, required_columns: set[str]) -> Path:
             continue
         if required_columns.issubset(set(header.columns)):
             return path
-    raise FileNotFoundError(f"Cannot find CSV with columns {sorted(required_columns)} in {data_dir}")
+    raise FileNotFoundError(
+        f"{data_dir} 안에서 필요한 컬럼 {sorted(required_columns)}를 가진 CSV를 찾지 못했다."
+    )
 
 
 def quarter_code_from_month(month: pd.Series) -> pd.Series:
@@ -110,7 +112,7 @@ def load_quarterly_subway_features(data_dir: Path = RAW_DIR) -> pd.DataFrame:
         required = {"station_name", "line_name", "area_code", "weight"}
         missing = required - set(weights.columns)
         if missing:
-            raise ValueError(f"{STATION_AREA_WEIGHTS} is missing columns: {sorted(missing)}")
+            raise ValueError(f"{STATION_AREA_WEIGHTS} 파일에 필요한 컬럼이 없다: {sorted(missing)}")
         merged = station_features.merge(weights, on=["station_name", "line_name"], how="inner")
         for column in value_columns:
             merged[column] = merged[column] * merged["weight"]
@@ -187,8 +189,8 @@ def build_sample_training_frame() -> pd.DataFrame:
     sales = load_sales_features()
     rows = subway.merge(sales, how="cross")
 
-    # Sample-only substitute for station-area spatial weight.
-    # Real training replaces this with EPSG:5181 station/area spatial join weights.
+    # 샘플 모드에서는 실제 역-행정동 공간조인 결과가 없으므로 임시 가중치를 쓴다.
+    # 실데이터 학습에서는 EPSG:5181 기준 공간조인 결과가 이 자리를 대체한다.
     rows["station_area_weight"] = 1 / (1 + rows.groupby("service_category_code").cumcount())
     rows["weighted_alighting_total"] = rows["alighting_total"] * rows["station_area_weight"]
     rows["weighted_lunch_alighting"] = rows["lunch_alighting"] * rows["station_area_weight"]

@@ -13,10 +13,11 @@ from app.models.onboarding_two_tower.runtime import (
     predict_payload,
 )
 from app.two_tower.codecs import (
+    DEFAULT_SURVEY_CODE,
     PROFILE_CODE_PREFIX,
     PROFILE_CODE_VERSION,
     build_share_path,
-    decode_profile_code,
+    decode_profile_code_details,
     encode_profile_code,
 )
 from app.two_tower.contracts import (
@@ -51,11 +52,21 @@ def _build_profile_state(
     updated_at: str | None,
     raw_answers: dict[str, Any] | None,
     user_profile: dict[str, Any],
+    survey_response_id: int | None = None,
+    survey_slug: str | None = None,
+    survey_version: int | None = None,
+    survey_code: str | None = None,
+    scoring_version: str | None = None,
 ) -> dict[str, Any]:
     return StoredUserTowerProfile(
         auth_user_uuid=auth_user_uuid,
         profile_code=profile_code,
         profile_schema_version=PROFILE_CODE_VERSION,
+        survey_response_id=survey_response_id,
+        survey_slug=survey_slug,
+        survey_version=survey_version,
+        survey_code=survey_code,
+        scoring_version=scoring_version,
         share_path=build_share_path(profile_code),
         share_url=build_share_url(profile_code),
         source=source,
@@ -76,9 +87,10 @@ async def resolve_prediction_response(
     session: AsyncSession,
     user_profile: dict[str, Any],
     top_k: int,
+    survey_code: str = DEFAULT_SURVEY_CODE,
 ) -> PredictResponse:
     validated_profile = UserProfilePayload.model_validate(user_profile).model_dump()
-    profile_code = encode_profile_code(validated_profile)
+    profile_code = encode_profile_code(validated_profile, survey_code=survey_code)
     metadata = await run_in_threadpool(evaluation_payload)
     model_signature = build_model_signature(metadata)
     cached = await prediction_cache_repository.get(
@@ -110,6 +122,7 @@ async def resolve_prediction_response(
     prediction_payload["user_profile"] = validated_profile
     prediction_payload["profile_code"] = profile_code
     prediction_payload["profile_schema_version"] = PROFILE_CODE_VERSION
+    prediction_payload["survey_code"] = survey_code
     prediction_payload["share_path"] = build_share_path(profile_code)
     prediction_payload["share_url"] = build_share_url(profile_code)
     prediction_payload["model_signature"] = model_signature
@@ -140,7 +153,12 @@ async def get_saved_profile_response(
         "rent_sensitivity_level": record.rent_sensitivity_level,
         "competition_tolerance_level": record.competition_tolerance_level,
     }
-    prediction = await resolve_prediction_response(session=session, user_profile=user_profile, top_k=top_k)
+    prediction = await resolve_prediction_response(
+        session=session,
+        user_profile=user_profile,
+        top_k=top_k,
+        survey_code=record.survey_code or DEFAULT_SURVEY_CODE,
+    )
     return ResolvedProfileResponse.model_validate(
         {
             "profile": _build_profile_state(
@@ -150,6 +168,11 @@ async def get_saved_profile_response(
                 updated_at=record.updated_at.isoformat(),
                 raw_answers=record.raw_answers,
                 user_profile=user_profile,
+                survey_response_id=record.survey_response_id,
+                survey_slug=record.survey_slug,
+                survey_version=record.survey_version,
+                survey_code=record.survey_code,
+                scoring_version=record.scoring_version,
             ),
             "prediction": prediction.model_dump(),
         }
@@ -162,7 +185,7 @@ async def upsert_saved_profile_response(
     request: SaveUserTowerProfileRequest,
 ) -> ResolvedProfileResponse:
     user_profile = request.user_profile.model_dump()
-    profile_code = encode_profile_code(user_profile)
+    profile_code = encode_profile_code(user_profile, survey_code=DEFAULT_SURVEY_CODE)
     record = await profile_repository.upsert(
         session=session,
         auth_user_uuid=auth_user_uuid,
@@ -172,7 +195,12 @@ async def upsert_saved_profile_response(
         raw_answers=request.raw_answers,
         user_profile=user_profile,
     )
-    prediction = await resolve_prediction_response(session=session, user_profile=user_profile, top_k=request.top_k)
+    prediction = await resolve_prediction_response(
+        session=session,
+        user_profile=user_profile,
+        top_k=request.top_k,
+        survey_code=DEFAULT_SURVEY_CODE,
+    )
     await session.commit()
     await session.refresh(record)
     return ResolvedProfileResponse.model_validate(
@@ -184,6 +212,11 @@ async def upsert_saved_profile_response(
                 updated_at=record.updated_at.isoformat(),
                 raw_answers=record.raw_answers,
                 user_profile=user_profile,
+                survey_response_id=record.survey_response_id,
+                survey_slug=record.survey_slug,
+                survey_version=record.survey_version,
+                survey_code=record.survey_code,
+                scoring_version=record.scoring_version,
             ),
             "prediction": prediction.model_dump(),
         }
@@ -196,11 +229,17 @@ async def resolve_shared_profile_response(
     top_k: int = 5,
 ) -> ResolvedProfileResponse:
     try:
-        user_profile = decode_profile_code(profile_code)
+        decoded = decode_profile_code_details(profile_code)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    prediction = await resolve_prediction_response(session=session, user_profile=user_profile, top_k=top_k)
+    user_profile = decoded.user_profile
+    prediction = await resolve_prediction_response(
+        session=session,
+        user_profile=user_profile,
+        top_k=top_k,
+        survey_code=decoded.survey_code or DEFAULT_SURVEY_CODE,
+    )
     return ResolvedProfileResponse.model_validate(
         {
             "profile": _build_profile_state(
@@ -210,6 +249,7 @@ async def resolve_shared_profile_response(
                 updated_at=None,
                 raw_answers=None,
                 user_profile=user_profile,
+                survey_code=decoded.survey_code,
             ),
             "prediction": prediction.model_dump(),
         }

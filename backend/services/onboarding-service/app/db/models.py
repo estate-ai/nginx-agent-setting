@@ -3,7 +3,18 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, Float, Index, Integer, SmallInteger, String, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    SmallInteger,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -25,6 +36,18 @@ class UserTowerProfileRecord(Base):
     profile_code: Mapped[str] = mapped_column(String(32), nullable=False)
     schema_version: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
+    survey_definition_id: Mapped[int | None] = mapped_column(
+        ForeignKey("survey_definitions.id"),
+        nullable=True,
+    )
+    survey_response_id: Mapped[int | None] = mapped_column(
+        ForeignKey("survey_responses.id"),
+        nullable=True,
+    )
+    survey_slug: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    survey_version: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    survey_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    scoring_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     user_id: Mapped[str] = mapped_column(String(64), nullable=False)
     profile_name: Mapped[str] = mapped_column(String(128), nullable=False)
     preferred_category_code: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -38,6 +61,62 @@ class UserTowerProfileRecord(Base):
     rent_sensitivity_level: Mapped[float] = mapped_column(Float, nullable=False)
     competition_tolerance_level: Mapped[float] = mapped_column(Float, nullable=False)
     raw_answers: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utc_now,
+        onupdate=_utc_now,
+    )
+
+
+class SurveyDefinitionRecord(Base):
+    __tablename__ = "survey_definitions"
+    __table_args__ = (
+        UniqueConstraint("slug", "version", name="uq_survey_definitions_slug_version"),
+        UniqueConstraint("survey_code", name="uq_survey_definitions_survey_code"),
+        Index("ix_survey_definitions_is_active", "is_active"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    version: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    survey_code: Mapped[str] = mapped_column(String(8), nullable=False)
+    scoring_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(String(512), nullable=False)
+    question_count: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    definition_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utc_now,
+        onupdate=_utc_now,
+    )
+
+
+class SurveyResponseRecord(Base):
+    __tablename__ = "survey_responses"
+    __table_args__ = (
+        Index("ix_survey_responses_profile_code", "profile_code"),
+        Index("ix_survey_responses_survey_code", "survey_code"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    survey_definition_id: Mapped[int] = mapped_column(ForeignKey("survey_definitions.id"), nullable=False)
+    survey_slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    survey_version: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    survey_code: Mapped[str] = mapped_column(String(8), nullable=False)
+    scoring_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="guest")
+    profile_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    profile_schema_version: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    profile_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    preferred_category_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    answers_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    scored_profile_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

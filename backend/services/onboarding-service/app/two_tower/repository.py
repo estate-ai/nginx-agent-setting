@@ -28,6 +28,12 @@ class UserTowerProfileRepository:
         source: str,
         raw_answers: dict[str, Any] | None,
         user_profile: dict[str, Any],
+        survey_definition_id: int | None = None,
+        survey_response_id: int | None = None,
+        survey_slug: str | None = None,
+        survey_version: int | None = None,
+        survey_code: str | None = None,
+        scoring_version: str | None = None,
     ) -> UserTowerProfileRecord:
         record = await self.get_by_auth_user_uuid(session, auth_user_uuid)
         if record is None:
@@ -36,6 +42,12 @@ class UserTowerProfileRepository:
                 profile_code=profile_code,
                 schema_version=schema_version,
                 source=source,
+                survey_definition_id=survey_definition_id,
+                survey_response_id=survey_response_id,
+                survey_slug=survey_slug,
+                survey_version=survey_version,
+                survey_code=survey_code,
+                scoring_version=scoring_version,
                 raw_answers=raw_answers,
                 **user_profile,
             )
@@ -44,6 +56,12 @@ class UserTowerProfileRepository:
             record.profile_code = profile_code
             record.schema_version = schema_version
             record.source = source
+            record.survey_definition_id = survey_definition_id
+            record.survey_response_id = survey_response_id
+            record.survey_slug = survey_slug
+            record.survey_version = survey_version
+            record.survey_code = survey_code
+            record.scoring_version = scoring_version
             record.raw_answers = raw_answers
             for field_name, value in user_profile.items():
                 setattr(record, field_name, value)
