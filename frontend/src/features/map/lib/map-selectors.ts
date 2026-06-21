@@ -1,19 +1,10 @@
 import type {
   BudgetRange,
+  DongCode,
   TargetDemographic,
   TradeAreaId,
 } from "@/features/map/types/map"
 import { districtsData, personaResults } from "@/features/startup/lib/data"
-
-// 기존 mock 상권 id를 테스트용 polygon id로 변환
-// 백엔드 연결 시 이 매핑과 추천 selector를 제거
-const polygonTradeAreaIds: Record<TradeAreaId, TradeAreaId[]> = {
-  gangnam: ["1123064"],
-  itaewon: ["1103065"],
-  jongno: ["1101061"],
-  mapo: ["1114066"],
-  seongdong: ["1104066"],
-}
 
 type FilteredTradeAreaInput = {
   activePersona: string | null
@@ -31,8 +22,9 @@ type ResolveRecommendedTradeAreaIdsInput = {
 }
 
 // 선택자 유틸은 필터링 규칙이 위젯과 스토어 조각에 흩어지지 않게 한다.
-export const getSelectedTradeArea = (selectedTradeAreaId: TradeAreaId | null) =>
-  districtsData.find((district) => district.id === selectedTradeAreaId) ?? null
+// 상권 데이터는 행정동 코드를 id로 쓰므로 선택된 동 코드로 바로 조회한다.
+export const getSelectedTradeArea = (selectedDongCode: DongCode | null) =>
+  districtsData.find((district) => district.id === selectedDongCode) ?? null
 
 export const getFilteredTradeAreas = ({
   activePersona,
@@ -101,18 +93,10 @@ export const getFilteredTradeAreas = ({
 export const getFilteredTradeAreaIds = (input: FilteredTradeAreaInput) =>
   new Set(getFilteredTradeAreas(input).map((district) => district.id))
 
-export const getRecommendedTradeAreaIds = (activePersona: string | null) => {
-  if (!activePersona) {
-    return []
-  }
-
-  const legacyTradeAreaIds =
-    personaResults[activePersona]?.recommendedDistricts ?? []
-
-  return legacyTradeAreaIds.flatMap(
-    (tradeAreaId) => polygonTradeAreaIds[tradeAreaId] ?? []
-  )
-}
+export const getRecommendedTradeAreaIds = (activePersona: string | null) =>
+  activePersona
+    ? (personaResults[activePersona]?.recommendedDistricts ?? [])
+    : []
 
 export const resolveRecommendedTradeAreaIds = ({
   chatTradeAreaIds,

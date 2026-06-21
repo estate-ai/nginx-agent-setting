@@ -34,10 +34,10 @@ import {
 export function ResultWidget() {
   const router = useRouter()
   const activeResultTab = useMapStore((state) => state.activeResultTab)
-  const selectedTradeAreaId = useMapStore((state) => state.selectedTradeAreaId)
+  const selectedDongCode = useMapStore((state) => state.selectedDongCode)
   const setActiveResultTab = useMapStore((state) => state.setActiveResultTab)
 
-  const selectedTradeArea = getSelectedTradeArea(selectedTradeAreaId)
+  const selectedTradeArea = getSelectedTradeArea(selectedDongCode)
 
   if (!selectedTradeArea) {
     return null

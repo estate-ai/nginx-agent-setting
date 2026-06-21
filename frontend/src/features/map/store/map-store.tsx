@@ -19,6 +19,10 @@ import {
   createMapInteractionSlice,
 } from "@/features/map/store/slices/map-interaction-slice"
 import {
+  type RecommendationSlice,
+  createRecommendationSlice,
+} from "@/features/map/store/slices/recommendation-slice"
+import {
   type SelectionSlice,
   createSelectionSlice,
 } from "@/features/map/store/slices/selection-slice"
@@ -27,6 +31,7 @@ export type MapState = FilterSlice &
   LayoutSlice &
   PersonaSlice &
   MapInteractionSlice &
+  RecommendationSlice &
   SelectionSlice
 
 // 지도 스토어는 MapStoreProvider 범위에 묶어서 라우트가 다시 마운트되면 UI 상태도 새로 시작한다.
@@ -36,6 +41,7 @@ const createMapStore = (initialState?: Partial<MapState>) =>
     ...createLayoutSlice(set, get, api),
     ...createPersonaSlice(set, get, api),
     ...createMapInteractionSlice(set, get, api),
+    ...createRecommendationSlice(set, get, api),
     ...createSelectionSlice(set, get, api),
     ...initialState,
   }))
