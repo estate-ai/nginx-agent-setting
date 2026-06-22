@@ -1,6 +1,7 @@
 export type PostCategory = "TREND" | "GUIDE" | "POLICY"
 export type PostSourceType = "MANUAL" | "CRAWLING" | "LLM_REPORT"
 export type PostVisibility = "PUBLIC" | "PRIVATE"
+export type PostStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED"
 
 export type PostSummary = {
   id: string
@@ -16,8 +17,13 @@ export type PostSummary = {
 }
 
 export type PostDetail = PostSummary & {
+  userId?: string
   authorId: string
   content: string
+  thumbnailUrl?: string | null
+  sourceId?: string | null
+  status?: PostStatus
+  visibility?: PostVisibility
   sourceTitle: string | null
   collectedAt: string | null
   createdAt: string
@@ -30,6 +36,9 @@ export type PostWriteInput = {
   content: string
   category: PostCategory
   readTimeMinutes: number
+  thumbnailUrl?: string | null
+  status?: PostStatus
+  visibility?: PostVisibility
 }
 
 export type MainPostCarouselSection = {
@@ -60,6 +69,22 @@ export type CreateCrawlSummaryPostInput = {
   visibility: PostVisibility
 }
 
+export type CrawlPreview = {
+  inputUrl: string | null
+  inputUrlType: "SEARCH_RESULT" | "ARTICLE" | "RAW_CONTENT" | "UNKNOWN"
+  discoveredArticleUrls: string[]
+  crawledArticleCount: number
+  skippedArticleCount: number
+  usedSelector: string
+  totalParagraphCount: number
+  matchedParagraphCount: number
+  matchedKeywords: string[]
+  excludedKeywords: string[]
+  relevanceScore: number
+  extractedTextLength: number
+  extractedTextPreview: string
+}
+
 export type CrawlSummaryPost = {
   id: string
   title: string
@@ -68,6 +93,20 @@ export type CrawlSummaryPost = {
   sourceType: PostSourceType
   sourceId: string | null
   createdAt: string
+  debug?: {
+    llmProvider: string
+    llmModel: string
+    inputUrlType: "SEARCH_RESULT" | "ARTICLE" | "RAW_CONTENT" | "UNKNOWN"
+    crawledArticleCount: number
+    skippedArticleCount: number
+    crawledTextLength: number
+    matchedKeywords: string[]
+    matchedParagraphCount: number
+    relevanceScore: number
+    llmStatus: "SUMMARIZED" | "FAILED"
+    notificationEligible: boolean
+    notificationCategory: "FRANCHISE" | null
+  }
 }
 
 export type PostPage = {

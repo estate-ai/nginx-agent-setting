@@ -22,8 +22,16 @@ public class PostCommandService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public Post create(PostDraft draft, String authorId, String authorName) {
+    public Post create(
+            PostDraft draft,
+            String authorId,
+            String authorName,
+            String thumbnailUrl,
+            PostStatus status,
+            PostVisibility visibility
+    ) {
         Post post = Post.create(authorId, authorName, draft);
+        post.configureManualPublication(thumbnailUrl, status, visibility);
         Post saved = postRepository.save(post);
         eventPublisher.publishEvent(PostChangedEvent.of("post.created", saved));
         return saved;
@@ -45,7 +53,14 @@ public class PostCommandService {
     }
 
     @Transactional
-    public Post update(UUID id, PostDraft draft, String currentUserId) {
+    public Post update(
+            UUID id,
+            PostDraft draft,
+            String currentUserId,
+            String thumbnailUrl,
+            PostStatus status,
+            PostVisibility visibility
+    ) {
         Post post = getActivePost(id);
         validateOwner(post, currentUserId);
         post.update(
@@ -55,6 +70,7 @@ public class PostCommandService {
                 draft.category(),
                 draft.readTimeMinutes()
         );
+        post.updateManualPublication(thumbnailUrl, status, visibility);
         eventPublisher.publishEvent(PostChangedEvent.of("post.updated", post));
         return post;
     }

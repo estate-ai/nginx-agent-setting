@@ -8,7 +8,7 @@ import type {
   PostWriteInput,
 } from "@/features/post/types/post"
 
-const postApiBaseUrl = `${process.env.NEXT_PUBLIC_API_ORIGIN ?? "http://localhost:8088"}/api/post/api/v1/posts`
+const postApiBaseUrl = `${process.env.NEXT_PUBLIC_API_ORIGIN ?? "http://localhost:8088"}/api/post/api/posts`
 const mainPostApiUrl = `${process.env.NEXT_PUBLIC_API_ORIGIN ?? "http://localhost:8088"}/api/post/api/posts/main`
 const postReportApiUrl = `${process.env.NEXT_PUBLIC_API_ORIGIN ?? "http://localhost:8088"}/api/post/api/v1/post-reports`
 
@@ -46,7 +46,7 @@ export const createPost = (input: PostWriteInput) =>
 
 export const updatePost = (id: string, input: PostWriteInput) =>
   fetchWithAuth<PostDetail>(`${postApiBaseUrl}/${id}`, {
-    method: "PUT",
+    method: "PATCH",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
   })

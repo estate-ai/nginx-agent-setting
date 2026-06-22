@@ -11,7 +11,7 @@ export type MainPost = {
 
 const DEFAULT_LIMIT = 10
 const MAX_LIMIT = 20
-const mainPostsApiUrl = `${process.env.NEXT_PUBLIC_API_ORIGIN ?? "http://localhost:8081"}/api/posts/main`
+const mainPostsApiUrl = `${process.env.NEXT_PUBLIC_API_ORIGIN ?? "http://localhost:8088"}/api/post/api/posts/main`
 const normalizeLimit = (limit: number) => {
   if (!Number.isFinite(limit)) return DEFAULT_LIMIT
   return Math.min(Math.max(Math.trunc(limit), 1), MAX_LIMIT)

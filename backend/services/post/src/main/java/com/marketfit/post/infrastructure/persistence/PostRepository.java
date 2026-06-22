@@ -21,6 +21,12 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
 
     Page<Post> findByDeletedAtIsNull(Pageable pageable);
 
+    Page<Post> findByVisibilityAndStatusAndDeletedAtIsNullOrderByPublishedAtDescIdDesc(
+            PostVisibility visibility,
+            PostStatus status,
+            Pageable pageable
+    );
+
     List<Post> findByVisibilityAndStatusAndDeletedAtIsNull(
             PostVisibility visibility,
             PostStatus status,

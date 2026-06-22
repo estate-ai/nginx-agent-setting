@@ -4,7 +4,7 @@ import type {
   CreateCrawlSummaryPostInput,
 } from "@/features/post/types/post"
 
-const crawlSummaryApiUrl = `${process.env.NEXT_PUBLIC_API_ORIGIN ?? "http://localhost:8081"}/api/posts/crawl-summary`
+const crawlSummaryApiUrl = `${process.env.NEXT_PUBLIC_API_ORIGIN ?? "http://localhost:8088"}/api/post/api/posts/crawl-summary`
 
 export const createCrawlSummaryPost = (input: CreateCrawlSummaryPostInput) =>
   fetchWithAuth<CrawlSummaryPost>(crawlSummaryApiUrl, {

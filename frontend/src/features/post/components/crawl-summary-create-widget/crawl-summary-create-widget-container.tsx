@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { CrawlSummaryCreateWidget } from "@/features/post/components/crawl-summary-create-widget/crawl-summary-create-widget"
+import { useCrawlPreviewPost } from "@/features/post/hooks/use-crawl-preview-post"
 import { useCreateCrawlSummaryPost } from "@/features/post/hooks/use-create-crawl-summary-post"
 import type {
   CrawlSummaryPost,
@@ -43,20 +44,20 @@ const validateInput = (url: string, rawContent: string) => {
 export function CrawlSummaryCreateWidgetContainer({
   onCreated,
 }: CrawlSummaryCreateWidgetContainerProps) {
-  const [url, setUrl] = useState(
-    "https://www.hankyung.com/economy"
-  )
+  const [url, setUrl] = useState("")
   const [keyword, setKeyword] = useState("")
-  const [rawContent, setRawContent] = useState("초록우산·힘난다· 경기도사회적경제원, 자립준비청년 창업지원 협력")
+  const [rawContent, setRawContent] = useState("")
   const [visibility, setVisibility] = useState<PostVisibility>("PUBLIC")
   const [validationError, setValidationError] = useState<string | null>(null)
   const { create, data, error, isLoading, reset } = useCreateCrawlSummaryPost()
+  const previewState = useCrawlPreviewPost()
 
   const handleFieldChange = (setter: (value: string) => void) => {
     return (value: string) => {
       setter(value)
       setValidationError(null)
       if (data || error) reset()
+      if (previewState.data || previewState.error) previewState.reset()
     }
   }
 
@@ -84,6 +85,15 @@ export function CrawlSummaryCreateWidgetContainer({
     onCreated?.(post)
   }
 
+  const handlePreview = async () => {
+    const inputError = validateInput(url, "")
+    if (inputError) {
+      setValidationError(inputError)
+      return
+    }
+    await previewState.preview(url, keyword).catch(() => null)
+  }
+
   return (
     <CrawlSummaryCreateWidget
       url={url}
@@ -91,8 +101,10 @@ export function CrawlSummaryCreateWidgetContainer({
       rawContent={rawContent}
       visibility={visibility}
       isLoading={isLoading}
-      error={validationError ?? error}
+      isPreviewLoading={previewState.isLoading}
+      error={validationError ?? previewState.error ?? error}
       createdPost={data}
+      preview={previewState.data}
       onUrlChange={handleFieldChange(setUrl)}
       onKeywordChange={handleFieldChange(setKeyword)}
       onRawContentChange={handleFieldChange(setRawContent)}
@@ -101,6 +113,7 @@ export function CrawlSummaryCreateWidgetContainer({
         setValidationError(null)
       }}
       onSubmit={(event) => void handleSubmit(event)}
+      onPreview={() => void handlePreview()}
     />
   )
 }

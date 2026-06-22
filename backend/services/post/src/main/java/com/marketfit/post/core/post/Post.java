@@ -126,6 +126,30 @@ public class Post {
         this.visibility = visibility;
     }
 
+    public void configureManualPublication(
+            String thumbnailUrl,
+            PostStatus status,
+            PostVisibility visibility
+    ) {
+        this.thumbnailUrl = normalizeNullable(thumbnailUrl);
+        this.status = status == null ? PostStatus.DRAFT : status;
+        this.visibility = visibility == null ? PostVisibility.PRIVATE : visibility;
+    }
+
+    public void updateManualPublication(
+            String thumbnailUrl,
+            PostStatus status,
+            PostVisibility visibility
+    ) {
+        this.thumbnailUrl = normalizeNullable(thumbnailUrl);
+        if (status != null) {
+            this.status = status;
+        }
+        if (visibility != null) {
+            this.visibility = visibility;
+        }
+    }
+
     public void update(
             String title,
             String summary,
@@ -148,6 +172,10 @@ public class Post {
 
     public boolean isWrittenBy(String userId) {
         return authorId.equals(userId);
+    }
+
+    private String normalizeNullable(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     @PrePersist

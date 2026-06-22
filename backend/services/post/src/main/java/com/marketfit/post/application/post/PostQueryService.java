@@ -21,6 +21,8 @@ import com.marketfit.post.api.post.dto.PostResponse;
 import com.marketfit.post.api.post.dto.PostSummaryResponse;
 import com.marketfit.post.core.post.PostCategory;
 import com.marketfit.post.core.post.PostSourceType;
+import com.marketfit.post.core.post.PostStatus;
+import com.marketfit.post.core.post.PostVisibility;
 import com.marketfit.post.infrastructure.persistence.PostRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -40,13 +42,26 @@ public class PostQueryService {
                 Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
                 Sort.by(Sort.Direction.DESC, "publishedAt").and(Sort.by(Sort.Direction.DESC, "id"))
         );
-        return postRepository.findByDeletedAtIsNull(pageable).map(PostSummaryResponse::from);
+        return postRepository
+                .findByVisibilityAndStatusAndDeletedAtIsNullOrderByPublishedAtDescIdDesc(
+                        PostVisibility.PUBLIC,
+                        PostStatus.PUBLISHED,
+                        pageable
+                )
+                .map(PostSummaryResponse::from);
     }
 
-    public PostResponse findById(UUID id) {
-        return postRepository.findByIdAndDeletedAtIsNull(id)
-                .map(PostResponse::from)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+    public PostResponse findById(UUID id, String currentUserId) {
+        var post = postRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "게시글을 찾을 수 없습니다."
+                ));
+        if (post.getVisibility() == PostVisibility.PRIVATE
+                && !post.isWrittenBy(currentUserId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
+        }
+        return PostResponse.from(post);
     }
 
     public List<MainPostSectionResponse> findMainSections() {

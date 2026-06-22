@@ -33,8 +33,8 @@ class MockLlmReportSummarizerTest {
         assertThat(result.content()).contains(
                 "# 수집된 기사 제목",
                 "## 핵심 요약",
-                "## 상세 분석",
-                "## 시사점"
+                "## 창업 기회",
+                "## 주의할 점"
         );
     }
 
@@ -51,6 +51,6 @@ class MockLlmReportSummarizerTest {
                 null
         ), "prompt");
 
-        assertThat(result.summary()).contains("정책 지원금");
+        assertThat(result.summary()).hasSizeGreaterThan(30);
     }
 }

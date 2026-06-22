@@ -8,9 +8,12 @@ import org.springframework.web.server.ResponseStatusException;
 import com.marketfit.post.api.post.dto.CrawlSummaryRequest;
 import com.marketfit.post.application.crawling.PostCrawlService;
 import com.marketfit.post.application.llm.PostLlmSummaryService;
+import com.marketfit.post.application.notification.PostReportNotificationService;
+import com.marketfit.post.application.notification.PostReportNotificationService.NotificationDecision;
 import com.marketfit.post.application.post.PostService;
 import com.marketfit.post.core.crawling.CrawledContent;
 import com.marketfit.post.core.llm.LlmReportRequest;
+import com.marketfit.post.core.llm.PostLlmSummaryStatus;
 import com.marketfit.post.core.post.Post;
 import com.marketfit.post.core.post.PostCategory;
 import com.marketfit.post.core.post.PostDraft;
@@ -26,8 +29,21 @@ public class PostCrawlSummaryFacade {
     private final PostCrawlService postCrawlService;
     private final PostLlmSummaryService postLlmSummaryService;
     private final PostService postService;
+    private final PostReportNotificationService notificationService;
+
+    public PostCrawlSummaryFacade(
+            PostCrawlService postCrawlService,
+            PostLlmSummaryService postLlmSummaryService,
+            PostService postService
+    ) {
+        this(postCrawlService, postLlmSummaryService, postService, null);
+    }
 
     public Post create(String userId, CrawlSummaryRequest request) {
+        return createDetailed(userId, request).post();
+    }
+
+    public CrawlSummaryCreation createDetailed(String userId, CrawlSummaryRequest request) {
         PostVisibility visibility = request.visibility() == null
                 ? PostVisibility.PUBLIC
                 : request.visibility();
@@ -75,10 +91,26 @@ public class PostCrawlSummaryFacade {
                     exception
             );
         }
-        return post;
+        NotificationDecision notification = notificationService == null
+                ? new NotificationDecision(false, null)
+                : notificationService.publishIfEligible(
+                        post,
+                        crawledContent,
+                        userId.trim(),
+                        PostLlmSummaryStatus.SUMMARIZED
+                );
+        return new CrawlSummaryCreation(post, crawledContent, execution, notification);
     }
 
     private int readTimeMinutes(String content) {
         return Math.max(1, Math.min(120, (int) Math.ceil(content.length() / 500.0)));
+    }
+
+    public record CrawlSummaryCreation(
+            Post post,
+            CrawledContent crawledContent,
+            PostLlmSummaryService.SummaryExecution llmExecution,
+            NotificationDecision notification
+    ) {
     }
 }

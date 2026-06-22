@@ -1,6 +1,6 @@
 # MainPostCarouselWidget
 
-메인 노출 조건을 만족하는 Post를 카드 캐러셀로 보여주는 독립 위젯이다.
+메인 노출 조건을 만족하는 Post를 큰 히어로 캐러셀로 보여주는 독립 위젯이다. `.temp` 메인의 단일 슬라이드 구성과 중립적인 흑백 톤을 참고하되, 실제 API에서 받은 제목·요약·썸네일·출처·발행일을 표시한다.
 
 ## Container 사용법
 
@@ -60,8 +60,10 @@ export function MainReportSection() {
 - `LLM_REPORT`: `AI 리포트`
 - `CRAWLING`: `크롤링`
 - `MANUAL`: `일반`
-- 썸네일이 없거나 로드에 실패하면 fallback 표시
-- 모바일 1개, 태블릿 2개, 데스크톱 3~4개 카드
+- 썸네일이 없거나 로드에 실패하면 어두운 그라데이션 fallback 표시
+- 모든 화면에서 한 번에 하나의 주요 리포트를 표시
+- 태블릿 이상에서는 좌우 이동 버튼을 제공
+- `리포트 보기` 버튼 선택 시 `onPostClick(postId)` 호출
 
 실제 메인 노출 여부는 frontend가 아니라 backend의 `PUBLIC`, `PUBLISHED`, `deleted_at IS NULL` 조회 조건으로 결정한다.
 

@@ -1,5 +1,25 @@
 # post-service
 
+## 검색 결과 URL 기반 창업 상권 리포트
+
+먼저 `POST /api/posts/crawl-preview`에
+`https://search.hankyung.com/search/news?query=프랜차이즈&page=1` 같은 공개 검색 URL을 전달한다.
+서비스는 같은 도메인의 기사 후보를 최대 5개 선택하고, 상세 HTML을 순차 수집한 뒤
+상가·상권·창업·프랜차이즈 관련 문단만 결합한다. 결과가 적절하면 같은 요청을
+`POST /api/posts/crawl-summary`에 보내 Post를 생성하고 `GET /api/posts/main`에서 확인한다.
+
+기사 수 정책은 “최대 5개”다. 적합한 후보가 1~2개만 발견되어도 해당 기사로 분석을
+계속하며 최소 3개를 강제하지 않는다.
+
+Jsoup은 브라우저가 아니므로 로그인·유료 기사, JavaScript 전용 렌더링, 무한 스크롤은
+완전히 지원하지 않는다. robots.txt와 사이트 이용약관을 확인하고 반복 요청을 제한해야 한다.
+
+`OPENAI_API_KEY`가 비어 있거나 `CHANGE_ME`이면 Mock을 사용한다. 실제 키가 프로세스에
+전달되면 OpenAI를 사용하며 로그에 `[PostLLM] ... Using OpenAI provider`가 표시된다.
+Mock만 보이면 키 존재 여부, placeholder 여부, 컨테이너 환경변수 전달, 서비스 재시작,
+provider 선택 로그를 차례로 확인한다. `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+`AUTHENTIK_*`는 인증용이며 LLM 키로 사용하지 않는다. 실제 키는 커밋하지 않는다.
+
 `post-service`의 크롤링, LLM 요약, Post 저장 API 계약과 구현 구조다.
 
 ## 빠른 시작
@@ -48,7 +68,7 @@ X-User-Id: authentik-sub
 Bearer JWT 필수 API:
 
 ```text
-GET    /api/posts/me
+GET    /api/posts/me/summary
 POST   /api/posts
 PATCH  /api/posts/{postId}
 DELETE /api/posts/{postId}
@@ -266,7 +286,7 @@ Response:
 200 OK
 ```
 
-## GET /api/posts/me
+## GET /api/posts/me/summary
 
 현재 사용자의 삭제되지 않은 Post를 최신순으로 조회한다.
 
@@ -313,6 +333,8 @@ Post 단건을 조회한다.
   "title": "직접 작성한 리포트",
   "content": "본문",
   "summary": "요약",
+  "category": "TREND",
+  "readTimeMinutes": 3,
   "thumbnailUrl": null,
   "status": "DRAFT",
   "visibility": "PRIVATE"
@@ -334,20 +356,22 @@ source_id = null
 
 ## PATCH /api/posts/{postId}
 
-작성자가 Post를 부분 수정한다.
+작성자가 Post의 편집 가능한 내용을 수정한다.
 
 ```json
 {
   "title": "수정 제목",
   "summary": "수정 요약",
   "content": "수정 본문",
+  "category": "GUIDE",
+  "readTimeMinutes": 4,
   "thumbnailUrl": "https://cdn.example.com/post.png",
   "status": "PUBLISHED",
   "visibility": "PUBLIC"
 }
 ```
 
-모든 필드는 선택값이다. `sourceType`, `sourceId`, `userId`는 수정할 수 없다.
+`title`, `summary`, `content`, `category`, `readTimeMinutes`는 필수다. `status`, `visibility`를 생략하면 기존 값을 유지하고, `thumbnailUrl`을 생략하거나 `null`로 보내면 썸네일을 제거한다. `sourceType`, `sourceId`, `userId`는 수정할 수 없다.
 
 ```text
 200 OK
@@ -366,7 +390,7 @@ deleted_at = now()
 204 No Content
 ```
 
-이미 삭제된 Post에 다시 요청해도 `204 No Content`를 반환한다.
+이미 삭제됐거나 존재하지 않는 Post는 `404 Not Found`를 반환한다.
 
 ## DB 상태
 
@@ -401,15 +425,18 @@ POST_DB_URL=jdbc:postgresql://<db-host>:5432/<db-name>
 POST_DB_USERNAME=<db-username>
 POST_DB_PASSWORD=<db-password>
 
+POST_CRAWL_DEFAULT_URL=https://example.com/article
 POST_CRAWL_TIMEOUT_SECONDS=10
 
 POST_LLM_PROVIDER=OPENAI
-OPENAI_MODEL=gpt-4o-mini
-OPENAI_TIMEOUT_SECONDS=30
+POST_LLM_MODEL=gpt-4o-mini
+POST_LLM_TIMEOUT_SECONDS=30
 OPENAI_API_KEY=CHANGE_ME
 ```
 
-`POST_LLM_PROVIDER`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_SECONDS`는 선택값이다. 생략하면 `OPENAI`, `gpt-4o-mini`, 30초를 사용하므로 실제 실행에 필요한 LLM 변수는 `OPENAI_API_KEY` 하나다.
+`POST_LLM_PROVIDER`, `POST_LLM_MODEL`, `POST_LLM_TIMEOUT_SECONDS`는 선택값이다. 생략하면 `OPENAI`, `gpt-4o-mini`, 30초를 사용한다. 실제 OpenAI 호출에는 `OPENAI_API_KEY`가 필요하다.
+
+`POST_CRAWL_DEFAULT_URL`은 요청의 `url`과 `rawContent`가 모두 비어 있을 때 사용하는 선택값이다. 기본 URL도 요청 URL과 동일하게 `http` 또는 `https`만 허용하며 내부 네트워크 주소는 차단한다.
 
 실제 API Key는 코드, migration, README, Git에 추적되는 `.env` 파일에 작성하지 않는다. 컨테이너 secret, CI secret 또는 로컬에서 Git에 추적되지 않는 환경변수로 주입한다.
 
@@ -426,7 +453,7 @@ https://
 
 loopback, link-local, 사설 IP와 내부 네트워크 주소는 차단한다. redirect 이후 최종 주소도 같은 검증을 적용한다.
 
-크롤링 전에 대상 사이트의 `robots.txt`와 이용약관을 확인한다. robots.txt 허용 여부가 곧 법적·계약상 허용을 의미하지는 않는다. 로그인 콘텐츠, 개인정보, 재배포가 금지된 콘텐츠는 수집하지 않는다. 현재 API는 요청당 단일 URL만 처리한다. 반복 호출을 붙일 경우 도메인별 호출 간격, 동시 요청 수, 재시도 횟수를 제한해 대상 사이트에 과도한 트래픽을 보내지 않는다.
+크롤링 전에 대상 사이트의 `robots.txt`와 이용약관을 확인한다. robots.txt 허용 여부가 곧 법적·계약상 허용을 의미하지는 않는다. 로그인 콘텐츠, 개인정보, 재배포가 금지된 콘텐츠는 수집하지 않는다. 검색 결과 요청 한 건에서 기사 상세 페이지는 최대 5개까지만 순차 처리한다. 반복 호출을 붙일 경우 도메인별 호출 간격, 동시 요청 수, 재시도 횟수를 제한해 대상 사이트에 과도한 트래픽을 보내지 않는다.
 
 ## LLM Provider
 
@@ -457,6 +484,35 @@ tokenUsage
 Provider별 원본 응답 전체를 DB에 저장하지 않는다. `post_llm_summaries`에는 provider, model, prompt, 최종 summary, token usage와 상태만 저장한다.
 
 ## notification adapter
+
+창업 상권 리포트 전용 알림은 application port와 infrastructure adapter로 분리되어
+notification-service 내부 구현에 의존하지 않는다. 기본값은
+`POST_NOTIFICATION_MODE=NOOP`이며 안전한 식별 정보만 로그로 남긴다.
+Rabbit 연결이 준비된 환경은 `POST_NOTIFICATION_MODE=RABBIT`과 exchange 설정을 사용한다.
+adapter 발행 실패는 Post 생성 응답을 실패시키지 않는다.
+
+알림은 `sourceType=LLM_REPORT`, `status=PUBLISHED`, LLM 상태 `SUMMARIZED`,
+프랜차이즈 계열 키워드 포함, 관련 문단 1개 이상, 관련도 0.2 이상을 모두 만족할 때만
+`POST_LLM_REPORT_CREATED` / `FRANCHISE` 이벤트로 발행한다.
+
+```json
+{
+  "eventType": "POST_LLM_REPORT_CREATED",
+  "producer": "post-service",
+  "version": 1,
+  "data": {
+    "category": "FRANCHISE",
+    "userId": "example-user",
+    "postId": "00000000-0000-0000-0000-000000000000",
+    "postTitle": "프랜차이즈 창업 리포트",
+    "matchedKeywords": ["프랜차이즈", "가맹점"],
+    "relevanceScore": 0.68,
+    "actionUrl": "/posts/00000000-0000-0000-0000-000000000000"
+  }
+}
+```
+
+payload에는 API Key, prompt, rawContent, 기사 원문, 인증 토큰을 포함하지 않는다.
 
 Post 저장 transaction commit 이후 아래 event를 발행한다.
 
