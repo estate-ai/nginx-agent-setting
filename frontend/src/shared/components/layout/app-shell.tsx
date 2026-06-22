@@ -4,6 +4,7 @@ import {
   HeaderNavButton,
   type HeaderNavButtonProps,
 } from "@/shared/components/layout/header-nav-button"
+import { ThemeToggle } from "@/shared/components/theme-toggle"
 import { Badge } from "@/shared/components/ui/badge"
 
 const NAV_ITEMS: HeaderNavButtonProps[] = [
@@ -46,8 +47,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               })}
             </nav>
 
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
               <HeaderAuthButton />
+              <ThemeToggle />
             </div>
           </div>
         </div>
