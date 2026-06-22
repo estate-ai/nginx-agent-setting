@@ -69,7 +69,7 @@ export function OnboardingSurveyClient() {
   const isLastStep = currentStep === totalSteps - 1
 
   const moveToStep = (nextStep: number) => {
-    setDirection("exit")
+    setDirection(nextStep > currentStep ? "exit-forward" : "exit-backward")
 
     if (stepTransitionTimeoutRef.current !== null) {
       window.clearTimeout(stepTransitionTimeoutRef.current)
@@ -78,7 +78,7 @@ export function OnboardingSurveyClient() {
     stepTransitionTimeoutRef.current = window.setTimeout(() => {
       setCurrentStep(nextStep)
       setDirection("enter")
-    }, 200)
+    }, 300)
   }
 
   const handleAnswer = (questionId: string, value: string | string[]) => {
@@ -95,7 +95,7 @@ export function OnboardingSurveyClient() {
 
       autoAdvanceTimeoutRef.current = window.setTimeout(() => {
         moveToStep(currentStep + 1)
-      }, 320)
+      }, 150)
     }
   }
 
@@ -110,7 +110,7 @@ export function OnboardingSurveyClient() {
   }
 
   return (
-    <div className="min-h-[calc(100dvh-3.5rem)] bg-gradient-to-br from-background via-background to-accent/20">
+    <div className="min-h-[calc(100dvh-3.5rem)] bg-linear-to-br from-background via-background to-accent/20">
       {isSubmitting ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="flex animate-in flex-col items-center gap-4 duration-300 fade-in zoom-in">
@@ -170,7 +170,7 @@ export function OnboardingSurveyClient() {
               isLastStep ? handleSubmit : () => moveToStep(currentStep + 1)
             }
             disabled={!canAdvance || isSubmitting}
-            className="flex-[2]"
+            className="flex-2"
           >
             {isLastStep ? "결과 보기" : "다음"}
           </Button>
@@ -187,19 +187,6 @@ export function OnboardingSurveyClient() {
           </button>
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes onboarding-fade-in-up {
-          from {
-            opacity: 0;
-            transform: translateY(12px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   )
 }

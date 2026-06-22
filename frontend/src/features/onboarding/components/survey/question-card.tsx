@@ -7,18 +7,22 @@ import { Checkbox } from "@/shared/components/ui/checkbox"
 
 type QuestionCardProps = {
   answer: OnboardingSurveyAnswerValue | undefined
-  direction: "enter" | "exit" | "idle"
+  direction: "enter" | "exit-forward" | "exit-backward" | "idle"
   onAnswer: (questionId: string, value: string | string[]) => void
   question: OnboardingSurveyQuestion
 }
 
 const getAnimationClassName = (direction: QuestionCardProps["direction"]) => {
   if (direction === "enter") {
-    return "animate-in fade-in slide-in-from-right-8 duration-400"
+    return "animate-in fade-in duration-200"
   }
 
-  if (direction === "exit") {
+  if (direction === "exit-forward") {
     return "animate-out fade-out slide-out-to-left-8 duration-300"
+  }
+
+  if (direction === "exit-backward") {
+    return "animate-out fade-out slide-out-to-right-8 duration-300"
   }
 
   return ""
@@ -109,13 +113,6 @@ export function QuestionCard({
                   ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
                   : "border-border bg-card hover:border-primary/30 hover:bg-accent/50 hover:shadow-sm"
               }`}
-              style={{
-                animationDelay: `${index * 60}ms`,
-                animation:
-                  direction === "enter"
-                    ? `onboarding-fade-in-up 0.4s ease-out ${index * 60}ms both`
-                    : undefined,
-              }}
             >
               {isSingle ? (
                 <div

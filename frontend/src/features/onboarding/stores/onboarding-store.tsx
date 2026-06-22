@@ -11,7 +11,7 @@ import type {
 type OnboardingStoreState = {
   answers: OnboardingSurveyAnswers
   currentStep: number
-  direction: "enter" | "exit" | "idle"
+  direction: "enter" | "exit-forward" | "exit-backward" | "idle"
   survey: OnboardingSurvey
 }
 
