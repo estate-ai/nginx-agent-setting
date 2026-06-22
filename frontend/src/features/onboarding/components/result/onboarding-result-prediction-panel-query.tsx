@@ -2,22 +2,32 @@
 
 import { OnboardingResultPredictionPanel } from "@/features/onboarding/components/result/onboarding-result-prediction-panel"
 import { DEFAULT_ONBOARDING_TOP_K } from "@/features/onboarding/lib/onboarding-defaults"
-import { useGetSurveyResultByCodeSurveysResultsProfileCodeGetSuspense } from "@/shared/api/generated/onboarding/endpoints/survey/survey"
+import { useGetAreaRecommendationsSurveysResultsResultCodeAreaRecommendationsGetSuspense } from "@/shared/api/generated/onboarding/endpoints/survey/survey"
 
 type OnboardingResultPredictionPanelQueryProps = {
-  profileCode: string
+  resultCode: string
+  selectedCategoryCode: string
+  selectedCategoryName: string
 }
 
 export function OnboardingResultPredictionPanelQuery({
-  profileCode,
+  resultCode,
+  selectedCategoryCode,
+  selectedCategoryName,
 }: OnboardingResultPredictionPanelQueryProps) {
   const { data: result } =
-    useGetSurveyResultByCodeSurveysResultsProfileCodeGetSuspense(profileCode, {
-      top_k: DEFAULT_ONBOARDING_TOP_K,
-    })
+    useGetAreaRecommendationsSurveysResultsResultCodeAreaRecommendationsGetSuspense(
+      resultCode,
+      {
+        category_code: selectedCategoryCode,
+        top_k: DEFAULT_ONBOARDING_TOP_K,
+      }
+    )
 
   return (
     <OnboardingResultPredictionPanel
+      categoryCode={selectedCategoryCode}
+      categoryName={selectedCategoryName}
       recommendations={result.prediction.recommendations}
     />
   )

@@ -25,7 +25,7 @@ describe("onboarding-result", () => {
 
   it("프로필 기반 인사이트 문장을 생성한다", () => {
     const insights = buildOnboardingInsights(
-      onboardingResultFixture.profile.user_profile
+      onboardingResultFixture.area_user_profile
     )
 
     expect(insights).toHaveLength(3)

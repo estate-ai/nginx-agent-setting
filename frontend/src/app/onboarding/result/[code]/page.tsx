@@ -1,9 +1,7 @@
 import { notFound } from "next/navigation"
 import { OnboardingResultScreen } from "@/features/onboarding/components/result/onboarding-result-screen"
-import {
-  InvalidOnboardingProfileCodeError,
-  decodeOnboardingProfileCode,
-} from "@/features/onboarding/lib/onboarding-profile-code"
+import { getOnboardingErrorStatus } from "@/features/onboarding/lib/onboarding-error"
+import { getOnboardingResultByCode } from "@/features/onboarding/lib/onboarding-server-api"
 
 export const dynamic = "force-dynamic"
 
@@ -11,22 +9,16 @@ export default async function OnboardingResultPage(
   props: PageProps<"/onboarding/result/[code]">
 ) {
   const { code } = await props.params
-  let decodedProfile: ReturnType<typeof decodeOnboardingProfileCode>
 
   try {
-    decodedProfile = decodeOnboardingProfileCode(code)
+    const surveyResult = await getOnboardingResultByCode(code)
+
+    return <OnboardingResultScreen surveyResult={surveyResult} />
   } catch (error) {
-    if (error instanceof InvalidOnboardingProfileCodeError) {
+    if (getOnboardingErrorStatus(error) === 404) {
       notFound()
     }
 
     throw error
   }
-
-  return (
-    <OnboardingResultScreen
-      profileCode={decodedProfile.profileCode}
-      userProfile={decodedProfile.userProfile}
-    />
-  )
 }

@@ -3,22 +3,32 @@ import { ChartColumnIncreasing, RotateCcw } from "lucide-react"
 import { RecommendationCard } from "@/features/onboarding/components/result/recommendation-card"
 import { getOnboardingEntryPath } from "@/features/onboarding/lib/onboarding-result"
 import type { OnboardingRecommendation } from "@/features/onboarding/types/onboarding"
+import { Badge } from "@/shared/components/ui/badge"
 import { Button } from "@/shared/components/ui/button"
 import { Card, CardContent } from "@/shared/components/ui/card"
 
 type OnboardingResultPredictionPanelProps = {
+  categoryCode: string
+  categoryName: string
   recommendations: OnboardingRecommendation[]
 }
 
 export function OnboardingResultPredictionPanel({
+  categoryCode,
+  categoryName,
   recommendations,
 }: OnboardingResultPredictionPanelProps) {
   return (
     <>
-      <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-        <span className="h-4 w-1 rounded-full bg-primary" />
-        추천 상권 TOP {recommendations.length}
-      </h2>
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <span className="h-4 w-1 rounded-full bg-primary" />
+          추천 상권 TOP {recommendations.length}
+        </h2>
+        <Badge variant="outline" className="rounded-full text-[11px]">
+          {categoryName} · {categoryCode}
+        </Badge>
+      </div>
 
       {recommendations.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">

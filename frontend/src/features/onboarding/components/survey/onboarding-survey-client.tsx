@@ -91,7 +91,7 @@ export function OnboardingSurveyClient() {
         onSuccess: (result) => {
           toast.success("설문 분석을 완료했습니다.")
           startRedirectTransition(() => {
-            router.push(getOnboardingResultPath(result.profile.profile_code))
+            router.push(getOnboardingResultPath(result.result_code))
           })
         },
         onError: (error) => {

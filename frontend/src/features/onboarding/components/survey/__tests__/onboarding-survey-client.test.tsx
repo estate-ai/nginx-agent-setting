@@ -266,7 +266,9 @@ describe("OnboardingSurveyClient", () => {
     await userEvent.click(screen.getByRole("button", { name: "결과 보기" }))
 
     expect(mutateMock).toHaveBeenCalledOnce()
-    expect(pushMock).toHaveBeenCalledWith("/onboarding/result/r3a3lz4o0x8w1f2j")
+    expect(pushMock).toHaveBeenCalledWith(
+      `/onboarding/result/${onboardingResultFixture.result_code}`
+    )
     expect(toastSuccessMock).toHaveBeenCalledWith("설문 분석을 완료했습니다.")
   })
 

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest"
 import {
-  DEFAULT_ONBOARDING_TOP_K,
   buildSaveSurveyResultRequest,
   buildSurveyPreviewRequest,
   hasAnsweredQuestion,
@@ -29,19 +28,16 @@ describe("onboarding-form", () => {
       answers: { q1: "A", q10: ["A", "D"] },
     })
 
-    expect(request.top_k).toBe(DEFAULT_ONBOARDING_TOP_K)
     expect(request.profile_name).toBe("설문 결과 프로필")
-    expect(request.preferred_category_code).toBe("CS100001")
   })
 
   it("설문 저장 요청 payload를 생성한다", () => {
     const request = buildSaveSurveyResultRequest({
-      profileCode: "abc123",
+      resultCode: "abc123",
     })
 
     expect(request).toEqual({
-      profile_code: "abc123",
-      top_k: DEFAULT_ONBOARDING_TOP_K,
+      result_code: "abc123",
     })
   })
 })

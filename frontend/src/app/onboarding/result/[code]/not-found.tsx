@@ -17,7 +17,7 @@ export default function OnboardingResultNotFound() {
           <EmptyMedia variant="icon">404</EmptyMedia>
           <EmptyTitle>결과 코드를 찾지 못했습니다.</EmptyTitle>
           <EmptyDescription>
-            공유 코드가 잘못되었거나 더 이상 조회할 수 없는 결과입니다.
+            결과 코드가 잘못되었거나 더 이상 조회할 수 없는 결과입니다.
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>

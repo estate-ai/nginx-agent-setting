@@ -3,6 +3,8 @@ import { DEFAULT_ONBOARDING_API_ORIGIN } from "@/features/onboarding/lib/onboard
 import {
   SurveyDefinitionResponse,
   type SurveyDefinitionResponseOutput,
+  SurveyResultResponse,
+  type SurveyResultResponseOutput,
 } from "@/shared/api/generated/onboarding/schemas"
 import { problemDetailSchema } from "@/shared/api/problem-detail-schema"
 
@@ -70,3 +72,16 @@ export const getActiveOnboardingSurveyDefinition =
       }
     )
   }
+
+export const getOnboardingResultByCode = async (
+  resultCode: string
+): Promise<SurveyResultResponseOutput> => {
+  return fetchPublicOnboardingJson(
+    `/surveys/results/${encodeURIComponent(resultCode)}`,
+    SurveyResultResponse,
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  )
+}

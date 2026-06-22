@@ -1,34 +1,28 @@
-import { Suspense } from "react"
 import { OnboardingResultActions } from "@/features/onboarding/components/result/onboarding-result-actions"
+import { OnboardingResultCategoryExplorer } from "@/features/onboarding/components/result/onboarding-result-category-explorer"
 import { OnboardingResultContent } from "@/features/onboarding/components/result/onboarding-result-content"
-import { OnboardingResultPredictionPanelQuery } from "@/features/onboarding/components/result/onboarding-result-prediction-panel-query"
-import { OnboardingResultPredictionPanelSkeleton } from "@/features/onboarding/components/result/onboarding-result-prediction-panel-skeleton"
-import type { OnboardingUserProfile } from "@/features/onboarding/types/onboarding"
-import { ClientOnly } from "@/shared/components/client-only"
+import type { OnboardingSurveyResult } from "@/features/onboarding/types/onboarding"
 
 type OnboardingResultScreenProps = {
-  profileCode: string
-  userProfile: OnboardingUserProfile
+  surveyResult: OnboardingSurveyResult
 }
 
 export function OnboardingResultScreen({
-  profileCode,
-  userProfile,
+  surveyResult,
 }: OnboardingResultScreenProps) {
-  const predictionFallback = <OnboardingResultPredictionPanelSkeleton />
-
   return (
     <OnboardingResultContent
-      actions={<OnboardingResultActions profileCode={profileCode} />}
-      predictionPanel={
-        <ClientOnly fallback={predictionFallback}>
-          <Suspense fallback={predictionFallback}>
-            <OnboardingResultPredictionPanelQuery profileCode={profileCode} />
-          </Suspense>
-        </ClientOnly>
+      actions={
+        <OnboardingResultActions resultCode={surveyResult.result_code} />
       }
-      profileCode={profileCode}
-      userProfile={userProfile}
+      predictionPanel={
+        <OnboardingResultCategoryExplorer
+          categories={surveyResult.category_recommendations}
+          resultCode={surveyResult.result_code}
+        />
+      }
+      profileCode={surveyResult.result_code}
+      userProfile={surveyResult.area_user_profile}
     />
   )
 }

@@ -1,6 +1,9 @@
 import type {
+  SavedSurveyResultListResponseOutput,
+  SavedSurveyResultSummaryOutput,
+  SurveyAreaRecommendationResponseOutput,
   SurveyDefinitionResponseOutput,
-  SurveyResultEnvelopeOutput,
+  SurveyResultResponseOutput,
 } from "@/shared/api/generated/onboarding/schemas"
 
 export type OnboardingSurvey = SurveyDefinitionResponseOutput
@@ -11,8 +14,18 @@ export type OnboardingSurveyAnswers = Record<
   string,
   OnboardingSurveyAnswerValue
 >
-export type OnboardingSurveyResult = SurveyResultEnvelopeOutput
-export type OnboardingProfile = OnboardingSurveyResult["profile"]
-export type OnboardingUserProfile = OnboardingProfile["user_profile"]
+
+export type OnboardingSurveyResult = SurveyResultResponseOutput
+export type OnboardingAreaRecommendationResult =
+  SurveyAreaRecommendationResponseOutput
+export type OnboardingAreaUserProfile =
+  OnboardingSurveyResult["area_user_profile"]
+export type OnboardingCategoryUserProfile =
+  OnboardingSurveyResult["category_user_profile"]
+export type OnboardingUserProfile = OnboardingAreaUserProfile
+export type OnboardingCategoryRecommendation =
+  OnboardingSurveyResult["category_recommendations"][number]
 export type OnboardingRecommendation =
-  OnboardingSurveyResult["prediction"]["recommendations"][number]
+  OnboardingAreaRecommendationResult["prediction"]["recommendations"][number]
+export type OnboardingSavedResultList = SavedSurveyResultListResponseOutput
+export type OnboardingSavedResultSummary = SavedSurveyResultSummaryOutput

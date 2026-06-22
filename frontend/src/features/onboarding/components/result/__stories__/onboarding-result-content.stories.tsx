@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite"
 import { OnboardingResultContent } from "@/features/onboarding/components/result/onboarding-result-content"
 import { OnboardingResultPredictionPanel } from "@/features/onboarding/components/result/onboarding-result-prediction-panel"
-import { onboardingResultFixture } from "@/features/onboarding/testing/onboarding-fixtures"
+import {
+  onboardingAreaRecommendationFixture,
+  onboardingResultFixture,
+} from "@/features/onboarding/testing/onboarding-fixtures"
 import { Button } from "@/shared/components/ui/button"
 
 const meta = {
@@ -19,11 +22,20 @@ const meta = {
     ),
     predictionPanel: (
       <OnboardingResultPredictionPanel
-        recommendations={onboardingResultFixture.prediction.recommendations}
+        categoryCode={
+          onboardingAreaRecommendationFixture.selected_category_code
+        }
+        categoryName={
+          onboardingResultFixture.category_recommendations[0]
+            ?.service_category_name ?? "선택 업종"
+        }
+        recommendations={
+          onboardingAreaRecommendationFixture.prediction.recommendations
+        }
       />
     ),
-    profileCode: onboardingResultFixture.profile.profile_code,
-    userProfile: onboardingResultFixture.profile.user_profile,
+    profileCode: onboardingResultFixture.result_code,
+    userProfile: onboardingResultFixture.area_user_profile,
   },
   parameters: {
     layout: "fullscreen",

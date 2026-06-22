@@ -8,38 +8,35 @@ import { toast } from "sonner"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSession } from "@/features/auth/lib/auth-client"
 import { getOnboardingErrorMessage } from "@/features/onboarding/lib/onboarding-error"
-import {
-  DEFAULT_ONBOARDING_TOP_K,
-  buildSaveSurveyResultRequest,
-} from "@/features/onboarding/lib/onboarding-form"
+import { buildSaveSurveyResultRequest } from "@/features/onboarding/lib/onboarding-form"
 import {
   getOnboardingLoginPath,
   getOnboardingResultPath,
 } from "@/features/onboarding/lib/onboarding-routes"
 import {
-  invalidateGetMySurveyProfileSurveysMeProfileGet,
-  usePutMySurveyProfileSurveysMeProfilePut,
+  invalidateGetSavedSurveyResultsSurveysMeSavedResultsGet,
+  usePostSavedSurveyResultSurveysMeSavedResultsPost,
 } from "@/shared/api/generated/onboarding/endpoints/survey/survey"
 import { Badge } from "@/shared/components/ui/badge"
 import { Button } from "@/shared/components/ui/button"
 import { Spinner } from "@/shared/components/ui/spinner"
 
-type OnboardingResultActionsProps = { profileCode: string }
+type OnboardingResultActionsProps = { resultCode: string }
 
 export function OnboardingResultActions({
-  profileCode,
+  resultCode,
 }: OnboardingResultActionsProps) {
   const pathname = usePathname()
   const queryClient = useQueryClient()
   const { data: session, isPending: isSessionPending } = useSession()
   const [isCopied, setIsCopied] = useState(false)
   const { mutate: saveResult, isPending: isSavePending } =
-    usePutMySurveyProfileSurveysMeProfilePut({
+    usePostSavedSurveyResultSurveysMeSavedResultsPost({
       mutation: {
         onSuccess: async () => {
-          await invalidateGetMySurveyProfileSurveysMeProfileGet(queryClient, {
-            top_k: DEFAULT_ONBOARDING_TOP_K,
-          })
+          await invalidateGetSavedSurveyResultsSurveysMeSavedResultsGet(
+            queryClient
+          )
           toast.success("내 설문 결과를 저장했습니다.")
         },
         onError: (error) => {
@@ -56,7 +53,7 @@ export function OnboardingResultActions({
   const handleCopyShare = async () => {
     try {
       const shareUrl = new URL(
-        getOnboardingResultPath(profileCode),
+        getOnboardingResultPath(resultCode),
         window.location.origin
       ).toString()
 
@@ -74,7 +71,7 @@ export function OnboardingResultActions({
   const handleSave = () => {
     saveResult({
       data: buildSaveSurveyResultRequest({
-        profileCode,
+        resultCode,
       }),
     })
   }
@@ -129,7 +126,7 @@ export function OnboardingResultActions({
       ) : null}
 
       <Badge variant="outline" className="font-mono text-[10px]">
-        {profileCode}
+        {resultCode}
       </Badge>
     </div>
   )

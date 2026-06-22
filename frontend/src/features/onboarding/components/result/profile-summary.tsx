@@ -25,7 +25,7 @@ export function ProfileSummary({
       <CardHeader>
         <CardTitle className="text-sm">나의 창업 성향 분석</CardTitle>
         <p className="font-mono text-[10px] text-muted-foreground">
-          프로필 코드: {profileCode}
+          결과 코드: {profileCode}
         </p>
       </CardHeader>
 
