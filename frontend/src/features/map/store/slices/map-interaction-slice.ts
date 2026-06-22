@@ -1,10 +1,5 @@
 import type { StateCreator } from "zustand"
-import type { DongCode } from "@/features/map/types/map"
-
-export type MapFocusRequest = {
-  dongCode: DongCode
-  requestId: number
-}
+import type { DongCode, MapFocusRequest } from "@/features/map/types/map"
 
 export type MapInteractionSlice = {
   hoveredDongCode: DongCode | null

@@ -14,8 +14,7 @@ import {
   getDongByCode,
   syncDongPolygonLayers,
 } from "@/features/map/lib/map-renderer/polygon-runtime"
-import type { MapFocusRequest } from "@/features/map/store/slices/map-interaction-slice"
-import { type DongCode } from "@/features/map/types/map"
+import type { DongCode, MapFocusRequest } from "@/features/map/types/map"
 
 type UseDongPolygonMapInput = {
   containerRef: RefObject<HTMLDivElement | null>
