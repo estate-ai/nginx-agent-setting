@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class CrawledContentTest {
 
     @Test
-    void LLM_입력은_최대_40000자로_제한한다() {
+    void LLM_입력은_최대_12000자로_제한한다() {
         CrawledContent content = new CrawledContent(
                 UUID.randomUUID(),
                 "https://example.com",
@@ -21,6 +21,6 @@ class CrawledContentTest {
                 Instant.now()
         );
 
-        assertThat(content.toLlmDocument().rawContent()).hasSize(40_000);
+        assertThat(content.toLlmDocument().rawContent()).hasSize(12_000);
     }
 }

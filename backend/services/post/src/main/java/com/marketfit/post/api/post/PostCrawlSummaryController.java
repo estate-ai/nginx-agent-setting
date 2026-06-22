@@ -11,6 +11,8 @@ import org.springframework.validation.annotation.Validated;
 
 import com.marketfit.post.api.post.dto.CrawlSummaryRequest;
 import com.marketfit.post.api.post.dto.CrawlSummaryResponse;
+import com.marketfit.post.api.post.dto.CrawlPreviewResponse;
+import com.marketfit.post.application.crawling.PostCrawlService;
 import com.marketfit.post.application.report.PostCrawlSummaryFacade;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +29,15 @@ import lombok.RequiredArgsConstructor;
 public class PostCrawlSummaryController {
 
     private final PostCrawlSummaryFacade crawlSummaryFacade;
+    private final PostCrawlService crawlService;
+
+    @PostMapping("/crawl-preview")
+    @Operation(operationId = "previewCrawl", summary = "검색/기사 URL 크롤링과 관련 문단 필터 결과 확인")
+    public CrawlPreviewResponse preview(
+            @Valid @RequestBody CrawlSummaryRequest request
+    ) {
+        return CrawlPreviewResponse.from(crawlService.preview(request));
+    }
 
     @PostMapping("/crawl-summary")
     @ResponseStatus(HttpStatus.CREATED)
@@ -35,6 +46,6 @@ public class PostCrawlSummaryController {
             @RequestHeader("X-User-Id") @NotBlank String userId,
             @Valid @RequestBody CrawlSummaryRequest request
     ) {
-        return CrawlSummaryResponse.from(crawlSummaryFacade.create(userId, request));
+        return CrawlSummaryResponse.from(crawlSummaryFacade.createDetailed(userId, request));
     }
 }

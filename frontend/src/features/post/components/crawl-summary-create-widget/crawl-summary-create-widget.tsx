@@ -2,6 +2,7 @@
 
 import { Sparkles } from "lucide-react"
 import type {
+  CrawlPreview,
   CrawlSummaryPost,
   PostVisibility,
 } from "@/features/post/types/post"
@@ -30,11 +31,14 @@ type CrawlSummaryCreateWidgetProps = {
   isLoading: boolean
   error: string | null
   createdPost: CrawlSummaryPost | null
+  preview: CrawlPreview | null
+  isPreviewLoading: boolean
   onUrlChange: (value: string) => void
   onKeywordChange: (value: string) => void
   onRawContentChange: (value: string) => void
   onVisibilityChange: (value: PostVisibility) => void
   onSubmit: (event: React.SubmitEvent<HTMLFormElement>) => void
+  onPreview: () => void
 }
 
 export function CrawlSummaryCreateWidget({
@@ -45,11 +49,14 @@ export function CrawlSummaryCreateWidget({
   isLoading,
   error,
   createdPost,
+  preview,
+  isPreviewLoading,
   onUrlChange,
   onKeywordChange,
   onRawContentChange,
   onVisibilityChange,
   onSubmit,
+  onPreview,
 }: CrawlSummaryCreateWidgetProps) {
   return (
     <Card>
@@ -123,10 +130,47 @@ export function CrawlSummaryCreateWidget({
             </p>
           )}
 
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "리포트 생성 중..." : "AI 리포트 생성"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isLoading || isPreviewLoading || !url.trim()}
+              onClick={onPreview}
+            >
+              {isPreviewLoading ? "미리보기 중..." : "크롤링 미리보기"}
+            </Button>
+            <Button type="submit" disabled={isLoading || isPreviewLoading}>
+              {isLoading ? "리포트 생성 중..." : "AI 리포트 생성"}
+            </Button>
+          </div>
         </form>
+
+        {preview && (
+          <div className="space-y-3 rounded-lg border border-border p-4">
+            <div className="flex flex-wrap gap-2">
+              <Badge>{preview.inputUrlType}</Badge>
+              <Badge variant="outline">
+                기사 {preview.crawledArticleCount}개
+              </Badge>
+              <Badge variant="outline">
+                관련도 {Math.round(preview.relevanceScore * 100)}%
+              </Badge>
+            </div>
+            <p className="text-sm">
+              관련 키워드: {preview.matchedKeywords.join(", ") || "없음"}
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+              {preview.discoveredArticleUrls.map((articleUrl) => (
+                <li key={articleUrl} className="break-all">
+                  {articleUrl}
+                </li>
+              ))}
+            </ul>
+            <pre className="max-h-72 overflow-auto rounded bg-muted p-3 text-xs whitespace-pre-wrap">
+              {preview.extractedTextPreview}
+            </pre>
+          </div>
+        )}
 
         {createdPost && (
           <div
@@ -143,6 +187,12 @@ export function CrawlSummaryCreateWidget({
             <p className="mt-2 text-sm text-muted-foreground">
               {createdPost.summary}
             </p>
+            {createdPost.debug?.notificationEligible && (
+              <p className="mt-3 rounded-md bg-primary/10 p-3 text-sm text-primary">
+                프랜차이즈 관련 AI 리포트가 생성되었습니다. 알림 대상
+                리포트입니다.
+              </p>
+            )}
           </div>
         )}
       </CardContent>

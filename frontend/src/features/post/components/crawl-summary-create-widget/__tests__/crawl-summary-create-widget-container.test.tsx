@@ -2,15 +2,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createCrawlSummaryPost } from "@/features/post/api/create-crawl-summary-post"
+import { previewCrawlPost } from "@/features/post/api/preview-crawl-post"
 import { CrawlSummaryCreateWidgetContainer } from "@/features/post/components/crawl-summary-create-widget/crawl-summary-create-widget-container"
 
 vi.mock("@/features/post/api/create-crawl-summary-post", () => ({
   createCrawlSummaryPost: vi.fn(),
 }))
 
+vi.mock("@/features/post/api/preview-crawl-post", () => ({
+  previewCrawlPost: vi.fn(),
+}))
+
 describe("CrawlSummaryCreateWidgetContainer", () => {
   beforeEach(() => {
     vi.mocked(createCrawlSummaryPost).mockReset()
+    vi.mocked(previewCrawlPost).mockReset()
   })
 
   it("URL과 원문이 모두 비어 있으면 안내한다", async () => {
@@ -75,6 +81,52 @@ describe("CrawlSummaryCreateWidgetContainer", () => {
     )
   })
 
+  it("검색 URL의 크롤링 미리보기 결과를 표시한다", async () => {
+    vi.mocked(previewCrawlPost).mockResolvedValue({
+      inputUrl: "https://news.example.com/search?query=프랜차이즈",
+      inputUrlType: "SEARCH_RESULT",
+      discoveredArticleUrls: [
+        "https://news.example.com/article/1",
+        "https://news.example.com/article/2",
+      ],
+      crawledArticleCount: 2,
+      skippedArticleCount: 0,
+      usedSelector: "article",
+      totalParagraphCount: 12,
+      matchedParagraphCount: 4,
+      matchedKeywords: ["프랜차이즈", "가맹점"],
+      excludedKeywords: [],
+      relevanceScore: 0.68,
+      extractedTextLength: 700,
+      extractedTextPreview: "[기사 1]\n프랜차이즈 창업 관련 본문",
+    })
+    render(<CrawlSummaryCreateWidgetContainer />)
+
+    await userEvent.type(
+      screen.getByLabelText("URL"),
+      "https://news.example.com/search?query=프랜차이즈"
+    )
+    await userEvent.type(screen.getByLabelText("키워드"), "프랜차이즈 창업")
+    await userEvent.click(
+      screen.getByRole("button", { name: "크롤링 미리보기" })
+    )
+
+    expect(await screen.findByText("SEARCH_RESULT")).toBeInTheDocument()
+    expect(screen.getByText("기사 2개")).toBeInTheDocument()
+    expect(screen.getByText("관련도 68%")).toBeInTheDocument()
+    expect(
+      screen.getByText("관련 키워드: 프랜차이즈, 가맹점")
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText("https://news.example.com/article/1")
+    ).toBeInTheDocument()
+    expect(screen.getByText(/프랜차이즈 창업 관련 본문/)).toBeInTheDocument()
+    expect(previewCrawlPost).toHaveBeenCalledWith({
+      url: "https://news.example.com/search?query=프랜차이즈",
+      keyword: "프랜차이즈 창업",
+    })
+  })
+
   it("rawContent를 입력해 제출한다", async () => {
     vi.mocked(createCrawlSummaryPost).mockResolvedValue(createdPost())
     render(<CrawlSummaryCreateWidgetContainer />)
@@ -125,6 +177,20 @@ describe("CrawlSummaryCreateWidgetContainer", () => {
       sourceType: "LLM_REPORT" as const,
       sourceId: "source-1",
       createdAt: "2026-06-21T10:00:00Z",
+      debug: {
+        llmProvider: "MOCK",
+        llmModel: "mock-v1",
+        inputUrlType: "RAW_CONTENT" as const,
+        crawledArticleCount: 1,
+        skippedArticleCount: 0,
+        crawledTextLength: 100,
+        matchedKeywords: ["프랜차이즈"],
+        matchedParagraphCount: 1,
+        relevanceScore: 0.8,
+        llmStatus: "SUMMARIZED" as const,
+        notificationEligible: true,
+        notificationCategory: "FRANCHISE" as const,
+      },
     }
     vi.mocked(createCrawlSummaryPost).mockResolvedValue(post)
     render(<CrawlSummaryCreateWidgetContainer onCreated={onCreated} />)
@@ -141,6 +207,11 @@ describe("CrawlSummaryCreateWidgetContainer", () => {
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith(post))
     expect(screen.getByText(post.title)).toBeInTheDocument()
     expect(screen.getByText(post.summary)).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        "프랜차이즈 관련 AI 리포트가 생성되었습니다. 알림 대상 리포트입니다."
+      )
+    ).toBeInTheDocument()
     expect(createCrawlSummaryPost).toHaveBeenCalledWith({
       url: null,
       keyword: "AI 채용",

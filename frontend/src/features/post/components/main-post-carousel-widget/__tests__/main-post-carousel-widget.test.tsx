@@ -24,7 +24,7 @@ const llmPost = {
 }
 
 describe("MainPostCarouselWidget", () => {
-  it("LLM_REPORT를 AI 리포트 배지로 표시한다", () => {
+  it("LLM_REPORT를 AI 리포트 히어로 슬라이드로 표시한다", () => {
     render(
       <MainPostCarouselWidget
         posts={[llmPost]}
@@ -37,6 +37,11 @@ describe("MainPostCarouselWidget", () => {
     expect(screen.getByText("AI 리포트")).toBeInTheDocument()
     expect(screen.getByText(llmPost.title)).toBeInTheDocument()
     expect(screen.getByText(llmPost.summary)).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", {
+        name: `${llmPost.title} 게시글 보기`,
+      })
+    ).toHaveTextContent("리포트 보기")
     expect(
       screen.getByLabelText(`${llmPost.title} 썸네일 없음`)
     ).toBeInTheDocument()
@@ -69,6 +74,9 @@ describe("MainPostCarouselWidget", () => {
 
     expect(
       screen.getByText("아직 등록된 리포트가 없습니다.")
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText("새로운 AI 분석 리포트가 발행되면 이곳에 표시됩니다.")
     ).toBeInTheDocument()
   })
 

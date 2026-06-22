@@ -18,7 +18,11 @@ public class MockLlmReportSummarizer implements PostLlmProvider {
         String title = hasText(sourceTitle)
                 ? limit(sourceTitle, TITLE_LIMIT)
                 : limit(firstSentence(normalized), TITLE_LIMIT);
-        String summary = limit(firstSentences(normalized, 3), SUMMARY_LIMIT);
+        String summary = """
+                수집된 뉴스는 상권과 상가 조건을 창업 판단에 함께 반영할 필요가 있음을 보여줍니다.
+                창업자와 프랜차이즈 운영자는 소비 흐름과 점포 경쟁도를 원문 근거로 검토할 만합니다.
+                임대료와 지속 수요 등 운영 리스크를 추가로 확인해야 합니다.
+                """.replaceAll("\\s+", " ").trim();
         String content = """
                 # %s
 
@@ -27,11 +31,14 @@ public class MockLlmReportSummarizer implements PostLlmProvider {
                 - 원문의 주요 흐름을 한국어로 정리했습니다.
                 - 세부 내용은 아래 분석을 참고하세요.
 
-                ## 상세 분석
+                ## 창업 기회
                 %s
 
-                ## 시사점
+                ## 주의할 점
                 원문의 핵심 내용을 실제 의사결정 전에 출처와 함께 확인하세요.
+
+                ## 추천 검토 방향
+                상권 수요, 임대 조건, 경쟁 점포를 함께 비교하세요.
                 """.formatted(title, summary, normalized).trim();
 
         return new LlmSummaryResult(

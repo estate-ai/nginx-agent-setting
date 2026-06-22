@@ -18,6 +18,9 @@ import com.marketfit.post.core.llm.LlmReportRequest;
 import com.marketfit.post.core.llm.PostLlmProvider;
 import com.marketfit.post.infrastructure.config.PostLlmProperties;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class OpenAiLlmReportSummarizer implements PostLlmProvider {
 
     private static final URI RESPONSES_URI = URI.create("https://api.openai.com/v1/responses");
@@ -60,6 +63,12 @@ public class OpenAiLlmReportSummarizer implements PostLlmProvider {
         }
 
         try {
+            log.info(
+                    "[PostLLM] OpenAI request start. model={}, inputLength={}, timeoutSeconds={}",
+                    properties.model(),
+                    request.document().rawContent().length(),
+                    properties.timeoutSeconds()
+            );
             String requestBody = objectMapper.writeValueAsString(buildRequest(request, prompt));
             HttpRequest httpRequest = HttpRequest.newBuilder(RESPONSES_URI)
                     .timeout(Duration.ofSeconds(properties.timeoutSeconds()))
@@ -72,11 +81,13 @@ public class OpenAiLlmReportSummarizer implements PostLlmProvider {
                     HttpResponse.BodyHandlers.ofString()
             );
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.warn("[PostLLM] OpenAI response failed. status={}", response.statusCode());
                 throw new ResponseStatusException(
                         HttpStatus.BAD_GATEWAY,
                         "OpenAI API가 성공 응답을 반환하지 않았습니다. status=" + response.statusCode()
                 );
             }
+            log.info("[PostLLM] OpenAI response success. status={}", response.statusCode());
             return parseResponse(response.body());
         } catch (HttpTimeoutException exception) {
             throw new ResponseStatusException(
@@ -164,15 +175,18 @@ public class OpenAiLlmReportSummarizer implements PostLlmProvider {
 
         try {
             JsonNode report = objectMapper.readTree(outputText);
-            return new LlmSummaryResult(
-                    limit(requiredText(report, "title"), 50),
+            LlmSummaryResult result = new LlmSummaryResult(
+                    limit(requiredText(report, "title"), 30),
                     requiredText(report, "summary"),
                     requiredText(report, "content"),
                     "OPENAI",
                     properties.model(),
                     tokenUsage(response)
             );
+            log.info("[PostLLM] JSON parsing success. fallback=false");
+            return result;
         } catch (Exception parseException) {
+            log.warn("[PostLLM] JSON parsing failed. fallback=true");
             return fallbackResult(outputText, response);
         }
     }
@@ -205,7 +219,7 @@ public class OpenAiLlmReportSummarizer implements PostLlmProvider {
                 hasText(normalized) ? normalized : "LLM 요약 리포트",
                 50
         );
-        String summary = limit(normalized, 240);
+        String summary = summaryFromPlainText(normalized);
         return new LlmSummaryResult(
                 title,
                 summary,
@@ -214,6 +228,16 @@ public class OpenAiLlmReportSummarizer implements PostLlmProvider {
                 properties.model(),
                 tokenUsage(response)
         );
+    }
+
+    private String summaryFromPlainText(String text) {
+        String[] sentences = text.split("(?<=[.!?。])\\s+");
+        if (sentences.length >= 3) {
+            return limit(String.join(" ", java.util.Arrays.copyOfRange(sentences, 0, 3)), 500);
+        }
+        return limit(text, 300)
+                + " 상권과 상가 조건을 함께 검토할 필요가 있습니다."
+                + " 창업 또는 프랜차이즈 운영비와 지속 수요의 위험도 확인해야 합니다.";
     }
 
     private java.util.Map<String, Integer> tokenUsage(JsonNode response) {

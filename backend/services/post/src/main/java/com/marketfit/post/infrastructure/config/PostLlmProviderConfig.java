@@ -20,14 +20,24 @@ public class PostLlmProviderConfig {
             PostLlmProperties properties
     ) {
         if ("OPENAI".equals(properties.provider()) && properties.hasUsableOpenAiApiKey()) {
-            log.info("Selected post LLM provider=OPENAI, model={}", properties.model());
+            log.info(
+                    "[PostLLM] OPENAI_API_KEY detected ({}). Using OpenAI provider. model={}",
+                    mask(properties.apiKey()),
+                    properties.model()
+            );
             return new OpenAiLlmReportSummarizer(objectMapper, properties);
         }
-        log.info(
-                "Selected post LLM provider=MOCK, configuredProvider={}, usableOpenAiApiKey={}",
-                properties.provider(),
-                properties.hasUsableOpenAiApiKey()
-        );
+        log.info("[PostLLM] OPENAI_API_KEY missing or placeholder. Using Mock provider.");
         return new MockLlmReportSummarizer();
+    }
+
+    private String mask(String apiKey) {
+        String trimmed = apiKey == null ? "" : apiKey.trim();
+        if (trimmed.length() <= 4) {
+            return "****";
+        }
+        return trimmed.substring(0, Math.min(3, trimmed.length()))
+                + "-****"
+                + trimmed.substring(trimmed.length() - 4);
     }
 }
