@@ -1,13 +1,13 @@
 import { Star } from "lucide-react"
 import type { DistrictData } from "@/features/startup/lib/data"
 
-type FranchiseRecommendationsProps = {
+type PreviewFranchiseRecommendationsProps = {
   tradeArea: DistrictData
 }
 
-export function FranchiseRecommendations({
+export function PreviewFranchiseRecommendations({
   tradeArea,
-}: FranchiseRecommendationsProps) {
+}: PreviewFranchiseRecommendationsProps) {
   return (
     <div>
       <ul className="flex flex-col gap-2">

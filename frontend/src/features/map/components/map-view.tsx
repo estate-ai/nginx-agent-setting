@@ -2,9 +2,9 @@
 
 import { PanelLeftOpen } from "lucide-react"
 import { Canvas } from "@/features/map/components/canvas/canvas"
-import { Detail } from "@/features/map/components/detail/detail"
 import { Explore } from "@/features/map/components/explore/explore"
 import { Filter } from "@/features/map/components/filter/filter"
+import { TradeAreaPreview } from "@/features/map/components/preview/trade-area-preview"
 import { useRecommendedAreas } from "@/features/map/hooks/use-recommended-areas"
 import { getSelectedTradeArea } from "@/features/map/lib/map-selectors"
 import { useMapStore } from "@/features/map/store/map-store"
@@ -51,10 +51,10 @@ export function MapView() {
         </Button>
       )}
 
-      {/* 오른쪽 패널은 선택된 동 상세를 보여준다(선택이 없으면 Detail을 닫는다). */}
+      {/* 오른쪽 패널은 선택된 동의 상권 미리보기를 보여준다. */}
       {selectedDongCode && (
         <div className="absolute top-20 right-4 bottom-20 z-10 w-80">
-          <Detail />
+          <TradeAreaPreview />
         </div>
       )}
     </div>

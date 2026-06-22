@@ -1,14 +1,13 @@
 import { X } from "lucide-react"
 import type { DistrictData } from "@/features/startup/lib/data"
-import { Badge } from "@/shared/components/ui/badge"
 import { Button } from "@/shared/components/ui/button"
 
-type DetailSummaryProps = {
+type PreviewSummaryProps = {
   onClose: () => void
   tradeArea: DistrictData
 }
 
-export function DetailSummary({ onClose, tradeArea }: DetailSummaryProps) {
+export function PreviewSummary({ onClose, tradeArea }: PreviewSummaryProps) {
   return (
     <div className="border-b border-border pb-5">
       <div className="flex items-center justify-between gap-3">
