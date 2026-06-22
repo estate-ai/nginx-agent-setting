@@ -1,8 +1,6 @@
-`frontend/src/app/onboarding/result/[code]/page.tsx`의 `code`는 이제 업종이 없는 공개 결과 코드다.
-`code`만으로는 상권 추천이 완성되지 않는다.
-상권 추천은 항상 `code + category_code`로 조회한다.
+# survey API
 
-## 경로
+`app/api/routes.py`는 설문 정의 조회, 결과 생성, 공개 결과 조회, 로그인 사용자 저장 기능을 한 라우터에 모아 둔다.
 
 ```text
 GET /surveys/active
@@ -17,7 +15,28 @@ GET /surveys/me/saved-results
 DELETE /surveys/me/saved-results/{result_code}
 ```
 
+## `result_code`
+
+`result_code`는 업종이 들어 있지 않은 공개 결과 코드다.
+상권 추천은 항상 `result_code + category_code` 조합으로 조회한다.
+기본 업종 확정 단계는 없다.
+`/surveys/results/{result_code}/confirm-category` 같은 경로도 없다.
+
+```text
+result_code
++ 설문 결과 본체 식별자
++ 공유 URL 식별자
++ 기본 프로필 / 저장 결과 연결 키
+
+category_code
++ 상권 추천 조회 시에만 사용
++ result_code에 인코딩되지 않음
+```
+
 ## `GET /surveys/active`
+
+프론트 설문 화면은 먼저 이 경로를 읽는다.
+응답은 `SurveyDefinitionResponse`다.
 
 ```json
 {
@@ -27,13 +46,40 @@ DELETE /surveys/me/saved-results/{result_code}
   "survey_code": "A",
   "scoring_version": "founder_fit_v2",
   "title": "창업 성향 설문 12문항",
-  "description": "업종 추천과 상권 추천을 함께 만들기 위한 설문",
+  "description": "업종 추천용 유저타워와 상권 추천용 유저타워를 함께 계산하는 현재 활성 설문 정의다.",
   "question_count": 12,
-  "questions": []
+  "questions": [
+    {
+      "id": "q1",
+      "selection_type": "single",
+      "prompt": "주말 오후에 가장 자주 가는 곳은 어디인가요?",
+      "max_selections": null,
+      "options": [
+        {
+          "code": "A",
+          "label": "집 근처 카페나 동네 가게"
+        }
+      ],
+      "primary_parameters": [
+        "resident_focus_level",
+        "weekend_preference_level",
+        "traffic_volume_preference"
+      ],
+      "secondary_parameters": [
+        "subway_dependency_level",
+        "stability_level",
+        "labor_intensity_tolerance"
+      ]
+    }
+  ]
 }
 ```
 
 ## `POST /surveys/active/preview`
+
+설문 응답으로 결과 본체를 만들고 DB에 바로 저장한다.
+Bearer 토큰이 있으면 저장 목록에도 `survey_submit`으로 같이 들어간다.
+응답은 `SurveyResultResponse`다.
 
 요청 body:
 
@@ -68,7 +114,7 @@ DELETE /surveys/me/saved-results/{result_code}
     "survey_code": "A",
     "scoring_version": "founder_fit_v2",
     "title": "창업 성향 설문 12문항",
-    "description": "업종 추천과 상권 추천을 함께 만들기 위한 설문",
+    "description": "업종 추천용 유저타워와 상권 추천용 유저타워를 함께 계산하는 현재 활성 설문 정의다.",
     "question_count": 12
   },
   "result_code": "r0a1b2c3d4e5f6g",
@@ -91,6 +137,7 @@ DELETE /surveys/me/saved-results/{result_code}
   "category_user_profile": {
     "user_id": "survey_a_category",
     "profile_name": "설문 결과 프로필",
+    "target_category_code": null,
     "stability_level": 0.62,
     "competition_tolerance_level": 0.57,
     "weekend_preference_level": 0.48,
@@ -129,16 +176,24 @@ DELETE /surveys/me/saved-results/{result_code}
 }
 ```
 
-`preview` 호출 시 결과 본체가 DB에 즉시 저장된다.
-인증 사용자가 Bearer 토큰을 같이 보내면 이 결과는 저장 목록에도 자동으로 들어간다.
-
 ## `GET /surveys/results/{result_code}`
 
 결과 페이지 기본 데이터 조회다.
 응답 shape은 `POST /surveys/active/preview`와 같다.
 여기서는 업종 없는 성향 결과, 두 유저타워, 업종 추천 리스트만 반환한다.
 
-## `GET /surveys/results/{result_code}/area-recommendations?category_code=...&top_k=5`
+## `GET /surveys/results/{result_code}/area-recommendations`
+
+상권 추천은 이 경로에서만 조회한다.
+같은 성향 결과와 같은 업종 조합이면 DB 캐시를 재사용한다.
+응답은 `SurveyAreaRecommendationResponse`다.
+
+쿼리:
+
+```text
+category_code: 조회할 업종 코드
+top_k: 기본값 5, 최소 1, 최대 10
+```
 
 응답 body:
 
@@ -166,17 +221,31 @@ DELETE /surveys/me/saved-results/{result_code}
       "rent_sensitivity_level": 0.28,
       "competition_tolerance_level": 0.67
     },
-    "recommendations": []
+    "recommendations": [
+      {
+        "rank": 1,
+        "score": 0.81,
+        "item_id": "11740",
+        "area_name": "성수역 상권",
+        "service_category_name": "제과점",
+        "area_profile_type": "station_area",
+        "sales_amount": 154000000.0,
+        "weekend_sales_ratio": 0.48,
+        "evening_sales_ratio": 0.41,
+        "resident_population": 21543,
+        "worker_population": 38112,
+        "subway_commercial_trend_score": 0.72,
+        "category_opportunity_score": 0.66,
+        "demand_gap_score": 0.58
+      }
+    ]
   }
 }
 ```
 
-상권 추천은 여기서만 조회한다.
-같은 성향 결과와 같은 업종 조합이면 DB 캐시를 재사용한다.
-
 ## `GET /surveys/me/profile/status`
 
-응답 body:
+기본 성향 프로필 존재 여부만 빠르게 확인한다.
 
 ```json
 {
@@ -196,6 +265,9 @@ DELETE /surveys/me/saved-results/{result_code}
 
 ## `PUT /surveys/me/profile`
 
+로그인 사용자의 기본 성향 프로필을 설정하거나 교체한다.
+응답 body는 `GET /surveys/results/{result_code}`와 같다.
+
 요청 body:
 
 ```json
@@ -204,15 +276,17 @@ DELETE /surveys/me/saved-results/{result_code}
 }
 ```
 
-응답 body는 `GET /surveys/results/{result_code}`와 같다.
-이 호출은 로그인 사용자의 기본 성향 프로필을 설정하거나 교체한다.
+이 호출은 저장 목록에도 같은 결과를 `default_profile`로 upsert 한다.
 
 ## `GET /surveys/me/profile`
 
-응답 body는 `GET /surveys/results/{result_code}`와 같다.
 로그인 사용자의 현재 기본 성향 프로필 본체를 반환한다.
+응답 body는 `GET /surveys/results/{result_code}`와 같다.
 
 ## `POST /surveys/me/saved-results`
+
+로그인 사용자가 특정 결과 코드를 저장 목록에 추가한다.
+응답은 `SavedSurveyResultSummary`다.
 
 요청 body:
 
@@ -240,7 +314,7 @@ DELETE /surveys/me/saved-results/{result_code}
 
 ## `GET /surveys/me/saved-results`
 
-응답 body:
+응답은 `SavedSurveyResultListResponse`다.
 
 ```json
 {
@@ -260,7 +334,7 @@ DELETE /surveys/me/saved-results/{result_code}
 }
 ```
 
-`saved_source`는 아래 값이 올 수 있다.
+`saved_source`는 아래 값이 온다.
 
 ```text
 survey_submit
@@ -270,18 +344,20 @@ default_profile
 
 ## `DELETE /surveys/me/saved-results/{result_code}`
 
-응답 body는 없다.
 성공하면 `204 No Content`다.
+응답 body는 없다.
 
-## 제약
+## 주요 파일
 
-```text
-result_code는 업종이 없는 공개 결과 코드다.
-업종은 result_code에 인코딩되지 않는다.
-상권 추천은 result_code + category_code 조합으로 조회한다.
-preview는 결과 본체를 즉시 저장한다.
-preview/결과 조회는 업종 추천까지 반환한다.
-상권 추천 조회는 area-recommendations 경로만 사용한다.
-기본 업종 확정 단계는 없다.
-confirm-category 경로는 없다.
-```
+- `app/api/routes.py`
+- `app/surveys/contracts.py`
+- `app/surveys/service.py`
+- `app/surveys/definitions.py`
+- `app/two_tower/contracts.py`
+- `app/models/onboarding_category_tower/contracts.py`
+
+## 참고 문서
+
+- FastAPI Path Parameters: https://fastapi.tiangolo.com/tutorial/path-params/
+- FastAPI Query Parameters: https://fastapi.tiangolo.com/tutorial/query-params/
+- Pydantic Models: https://docs.pydantic.dev/latest/concepts/models/
