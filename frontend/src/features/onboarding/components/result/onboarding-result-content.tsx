@@ -27,7 +27,7 @@ export function OnboardingResultContent({
   const insights = buildOnboardingInsights(userProfile)
 
   return (
-    <main className="min-h-[calc(100dvh-3.5rem)] bg-gradient-to-b from-background via-background to-accent/10 px-5 py-8 md:px-8 md:py-12">
+    <main className="min-h-[calc(100dvh-3.5rem)] bg-linear-to-b from-background via-background to-accent/10 px-5 py-8 md:px-8 md:py-12">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8 md:mb-10">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -48,26 +48,15 @@ export function OnboardingResultContent({
           </div>
         </header>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
-          <aside className="space-y-5 lg:col-span-5">
-            <div className="space-y-5 lg:sticky lg:top-8">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <span className="h-4 w-1 rounded-full bg-primary" />
-                나의 창업 성향
-              </h2>
+        <div className="flex flex-col gap-10">
+          <aside className="space-y-5">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <span className="h-4 w-1 rounded-full bg-primary" />
+              나의 창업 성향
+            </h2>
 
-              <Card>
-                <CardContent className="flex items-center justify-center pt-4 pb-2">
-                  <ProfileRadar profile={userProfile} />
-                </CardContent>
-              </Card>
-
-              <ProfileSummary
-                profileCode={profileCode}
-                userProfile={userProfile}
-              />
-
-              <Card className="border-primary/15 bg-primary/[0.02]">
+            <div className="flex flex-col gap-5">
+              <Card className="border-primary/15 bg-primary/2">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Lightbulb className="h-4 w-4 text-primary/70" />
@@ -89,12 +78,23 @@ export function OnboardingResultContent({
                   ))}
                 </CardContent>
               </Card>
+
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <Card>
+                  <CardContent className="flex items-center justify-center pt-4 pb-2">
+                    <ProfileRadar profile={userProfile} />
+                  </CardContent>
+                </Card>
+
+                <ProfileSummary
+                  profileCode={profileCode}
+                  userProfile={userProfile}
+                />
+              </div>
             </div>
           </aside>
 
-          <section className="space-y-5 lg:col-span-7">
-            {predictionPanel}
-          </section>
+          <section className="space-y-5">{predictionPanel}</section>
         </div>
       </div>
     </main>

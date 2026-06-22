@@ -81,7 +81,7 @@ export const getProfileMetricLabel = (metricKey: OnboardingMetricKey) => {
 }
 
 export const getMetricBarClassName = (value: number) => {
-  if (value >= 0.7) {
+  if (value >= 0.6) {
     return "bg-emerald-500/70"
   }
 
@@ -93,7 +93,7 @@ export const getMetricBarClassName = (value: number) => {
 }
 
 export const getRecommendationScoreTextClassName = (score: number) => {
-  if (score >= 0.7) {
+  if (score >= 0.6) {
     return "text-emerald-600 dark:text-emerald-400"
   }
 

@@ -45,9 +45,15 @@ export function ProfileSummary({
                     {percent}%
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div className="relative flex h-1.5 w-full overflow-hidden rounded-full">
+                  {/* Background segments mapping to the thresholds */}
+                  <div className="h-full w-[40%] bg-muted-foreground/15" />
+                  <div className="h-full w-[20%] bg-amber-500/15" />
+                  <div className="h-full w-[40%] bg-emerald-500/15" />
+
+                  {/* Foreground progress bar */}
                   <div
-                    className={`h-full rounded-full transition-all duration-700 ease-out ${getMetricBarClassName(metricValue)}`}
+                    className={`absolute top-0 left-0 h-full rounded-full transition-all duration-700 ease-out ${getMetricBarClassName(metricValue)}`}
                     style={{ width: `${percent}%` }}
                   />
                 </div>
