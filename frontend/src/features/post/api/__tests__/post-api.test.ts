@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { fetchWithAuth } from "@/features/auth/lib/fetch-with-auth"
 import {
   createLlmReport,
+  createPost,
   getMainPostCarousel,
   getPosts,
+  updatePost,
 } from "@/features/post/api/post-api"
 
 vi.mock("@/features/auth/lib/fetch-with-auth", () => ({
@@ -88,6 +90,31 @@ describe("post-api", () => {
           category: "TREND",
         }),
       })
+    )
+  })
+
+  it("Post 생성과 수정은 통합 CRUD 경로를 사용한다", async () => {
+    const input = {
+      title: "제목",
+      summary: "요약",
+      content: "본문",
+      category: "TREND" as const,
+      readTimeMinutes: 1,
+    }
+    vi.mocked(fetchWithAuth).mockResolvedValue({} as never)
+
+    await createPost(input)
+    await updatePost("post-1", input)
+
+    expect(fetchWithAuth).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("/api/post/api/posts"),
+      expect.objectContaining({ method: "POST" })
+    )
+    expect(fetchWithAuth).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("/api/post/api/posts/post-1"),
+      expect.objectContaining({ method: "PATCH" })
     )
   })
 })

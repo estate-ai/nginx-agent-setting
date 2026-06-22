@@ -1,8 +1,12 @@
 package com.marketfit.post.core.crawling;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -46,6 +50,33 @@ public class PostCrawlSource {
     private Instant crawledAt;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "input_url_type", length = 30)
+    private InputUrlType inputUrlType;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "discovered_article_urls", columnDefinition = "jsonb")
+    private List<String> discoveredArticleUrls;
+
+    @Column(name = "crawled_article_count")
+    private int crawledArticleCount;
+
+    @Column(name = "skipped_article_count")
+    private int skippedArticleCount;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "matched_keywords", columnDefinition = "jsonb")
+    private List<String> matchedKeywords;
+
+    @Column(name = "matched_paragraph_count")
+    private int matchedParagraphCount;
+
+    @Column(name = "total_paragraph_count")
+    private int totalParagraphCount;
+
+    @Column(name = "relevance_score")
+    private double relevanceScore;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PostCrawlStatus status;
 
@@ -79,6 +110,18 @@ public class PostCrawlSource {
         this.crawledAt = crawledAt;
         this.status = PostCrawlStatus.CRAWLED;
         this.errorMessage = null;
+    }
+
+    public void markCrawled(CrawledContent content) {
+        markCrawled(content.sourceUrl(), content.title(), content.bodyText(), content.crawledAt());
+        inputUrlType = content.inputUrlType();
+        discoveredArticleUrls = new ArrayList<>(content.discoveredArticleUrls());
+        crawledArticleCount = content.crawledArticleCount();
+        skippedArticleCount = content.skippedArticleCount();
+        matchedKeywords = new ArrayList<>(content.matchedKeywords());
+        matchedParagraphCount = content.matchedParagraphCount();
+        totalParagraphCount = content.totalParagraphCount();
+        relevanceScore = content.relevanceScore();
     }
 
     public void markFailed(String errorMessage) {

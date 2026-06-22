@@ -1,34 +1,32 @@
-// src/features/auth/components/sign-in-client.tsx
 "use client"
 
-import { useEffect, useState } from "react"
-import { ArrowRight } from "lucide-react"
-import { toast } from "sonner"
+import { ArrowRight, MessageCircle } from "lucide-react"
 import { authClient } from "@/features/auth/lib/auth-client"
-import {
-  getDefaultLoginOption,
-  loginOptions,
-} from "@/features/auth/lib/login-options"
-import {
-  OAUTH_LOGIN_ERROR,
-  buildOAuthSignInPayload,
-} from "@/features/auth/lib/oauth-sign-in"
-import { Badge } from "@/shared/components/ui/badge"
-import { Button } from "@/shared/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/shared/components/ui/card"
+import { AUTHENTIK_PROVIDER_ID } from "@/features/auth/lib/auth-constants"
 
-const showLoginErrorToast = () => {
-  toast.error("로그인을 완료하지 못했습니다.", {
-    description: "잠시 후 다시 시도해주시기 바랍니다",
-  })
-}
+const SOCIAL_PROVIDERS = [
+  {
+    id: "google",
+    label: "Google로 계속하기",
+    icon: GoogleIcon,
+    className:
+      "border-neutral-200 bg-white text-neutral-900 hover:border-neutral-300 hover:bg-neutral-50",
+  },
+  {
+    id: "kakao",
+    label: "카카오로 계속하기",
+    icon: KakaoIcon,
+    className:
+      "border-[#FEE500] bg-[#FEE500] text-[#191919] hover:border-[#FEE500] hover:bg-[#f4dc00]",
+  },
+  {
+    id: "naver",
+    label: "네이버로 계속하기",
+    icon: NaverIcon,
+    className:
+      "border-[#03C75A] bg-[#03C75A] text-white hover:border-[#03C75A] hover:bg-[#02b350]",
+  },
+] as const
 
 export default function SignInClient({
   callbackURL,
@@ -37,116 +35,105 @@ export default function SignInClient({
   callbackURL: string
   error?: string
 }) {
-  const [activeOptionId, setActiveOptionId] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (error === OAUTH_LOGIN_ERROR) {
-      showLoginErrorToast()
-    }
-  }, [error])
-
-  const defaultLoginOption = getDefaultLoginOption()
+  const signInWithAuthentik = async () => {
+    await authClient.signIn.oauth2({
+      providerId: AUTHENTIK_PROVIDER_ID,
+      callbackURL,
+      errorCallbackURL: "/login?error=oauth",
+      scopes: ["openid", "profile", "email"],
+    })
+  }
 
   return (
-    <Card className="border border-border/80 bg-background/95 shadow-sm">
-      <CardHeader className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <Badge variant="outline">Secure sign-in</Badge>
-          <span className="text-[0.625rem] text-muted-foreground">
-            redirect: <code className="font-mono">{callbackURL}</code>
+    <div className="mt-8 space-y-4">
+      {error ? (
+        <p
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+        >
+          로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.
+        </p>
+      ) : null}
+
+      <div className="space-y-2.5">
+        {SOCIAL_PROVIDERS.map(({ id, label, icon: Icon, className }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={signInWithAuthentik}
+            className={[
+              "group flex h-12 w-full items-center gap-3 rounded-xl border px-4 text-sm font-bold shadow-sm transition-all",
+              "hover:-translate-y-0.5 hover:shadow-md",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/20 focus-visible:ring-offset-2",
+              className,
+            ].join(" ")}
+          >
+            <span className="flex size-6 shrink-0 items-center justify-center">
+              <Icon />
+            </span>
+
+            <span className="flex-1 text-center">{label}</span>
+
+            <ArrowRight
+              className="size-4 shrink-0 opacity-70 transition-transform group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          </button>
+        ))}
+      </div>
+
+      <div className="relative py-1">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-neutral-200" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-white px-3 text-xs text-neutral-400">
+            간편하고 안전한 소셜 로그인
           </span>
         </div>
-        <div className="space-y-1">
-          <CardTitle className="text-base">로그인</CardTitle>
-          <CardDescription>
-            Google 계정으로 빠르게 로그인하고 이전 작업 위치로 돌아갑니다.
-          </CardDescription>
-        </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="space-y-3">
-        <div className="space-y-2">
-          {loginOptions.map((loginOption) => {
-            const isSubmitting = activeOptionId === loginOption.id
-            const isDisabled = activeOptionId !== null
-
-            return (
-              <Button
-                key={loginOption.id}
-                type="button"
-                variant="outline"
-                size="lg"
-                className="h-11 w-full justify-between rounded-lg px-4"
-                disabled={isDisabled}
-                aria-busy={isSubmitting}
-                onClick={async () => {
-                  if (isDisabled) return
-
-                  setActiveOptionId(loginOption.id)
-
-                  try {
-                    const result = await authClient.signIn.oauth2(
-                      buildOAuthSignInPayload({
-                        callbackURL,
-                        loginOption,
-                      })
-                    )
-                    if (result?.error) throw result.error
-                  } catch {
-                    showLoginErrorToast()
-                  } finally {
-                    setActiveOptionId(null)
-                  }
-                }}
-              >
-                <span className="flex items-center gap-3">
-                  <GoogleIcon />
-                  <span className="text-sm font-medium">
-                    {loginOption.label}
-                  </span>
-                </span>
-                <ArrowRight className="size-4 text-muted-foreground" />
-              </Button>
-            )
-          })}
-        </div>
-      </CardContent>
-
-      <CardFooter className="border-t border-border pt-4 text-xs text-muted-foreground">
-        {defaultLoginOption.description}
-      </CardFooter>
-    </Card>
+      <p className="text-center text-xs leading-5 text-neutral-400">
+        계속 진행하면 서비스 이용약관 및 개인정보 처리방침에 동의하게 됩니다.
+      </p>
+    </div>
   )
 }
 
 function GoogleIcon() {
   return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="size-4"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5 shrink-0">
       <path
-        d="M21.805 12.23c0-.73-.065-1.43-.186-2.102H12v3.977h5.498a4.705 4.705 0 0 1-2.041 3.088v2.566h3.305c1.936-1.782 3.043-4.407 3.043-7.53Z"
-        fill="currentColor"
+        fill="#4285F4"
+        d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.91h5.38a4.6 4.6 0 0 1-2 3.02v2.54h3.24c1.9-1.75 2.98-4.32 2.98-7.4Z"
       />
       <path
-        d="M12 22c2.754 0 5.063-.913 6.75-2.474l-3.305-2.566c-.918.616-2.092.981-3.445.981-2.647 0-4.89-1.786-5.692-4.188H2.89v2.647A10 10 0 0 0 12 22Z"
-        fill="currentColor"
-        opacity="0.7"
+        fill="#34A853"
+        d="M12 22c2.7 0 4.98-.9 6.64-2.43l-3.24-2.54c-.9.6-2.05.96-3.4.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.62A10 10 0 0 0 12 22Z"
       />
       <path
-        d="M6.308 13.753A5.99 5.99 0 0 1 6 12c0-.608.105-1.198.308-1.753V7.6H2.89A10 10 0 0 0 2 12c0 1.61.385 3.13 1.07 4.4l3.238-2.647Z"
-        fill="currentColor"
-        opacity="0.55"
+        fill="#FBBC05"
+        d="M6.39 13.86A6.02 6.02 0 0 1 6.07 12c0-.65.11-1.28.32-1.86V7.52H3.04A10 10 0 0 0 2 12c0 1.61.39 3.14 1.04 4.48l3.35-2.62Z"
       />
       <path
-        d="M12 6.06c1.497 0 2.84.515 3.899 1.529l2.923-2.923C17.058 3.034 14.75 2 12 2A10 10 0 0 0 2.89 7.6l3.418 2.647C7.11 7.846 9.353 6.06 12 6.06Z"
-        fill="currentColor"
-        opacity="0.4"
+        fill="#EA4335"
+        d="M12 6.01c1.47 0 2.79.51 3.83 1.5l2.87-2.88A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.96 5.52l3.35 2.62C7.18 7.77 9.39 6.01 12 6.01Z"
       />
     </svg>
+  )
+}
+
+function KakaoIcon() {
+  return <MessageCircle className="size-5 shrink-0 fill-current" aria-hidden />
+}
+
+function NaverIcon() {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex size-5 shrink-0 items-center justify-center rounded-sm text-base font-black leading-none"
+    >
+      N
+    </span>
   )
 }

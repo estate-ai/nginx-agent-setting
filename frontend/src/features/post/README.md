@@ -2,7 +2,17 @@
 
 `src/features/post`는 메인 게시글 캐러셀, 게시글 작성/목록, 마이페이지 요약 위젯을 소유한다.
 
+검색 결과 미리보기는 관련 기사 URL을 최대 5개까지 표시한다. 적합한 후보가 적으면
+1~2개만 표시될 수 있다.
+
+현재 저장소 전체 production build는 범위 밖 `src/shared/api/generated` 산출물이 없는
+환경에서 실패할 수 있다. Post 기능 테스트는 생성 API 모듈과 독립적으로 실행한다.
+
 ## CrawlSummaryCreateWidgetContainer
+
+생성 응답의 `debug.notificationEligible`이 `true`이면 프랜차이즈 관련 알림 대상
+안내 문구를 표시한다. 이 기능은 대상 여부에 대한 힌트만 제공한다. 실제 SSE/WebSocket
+수신과 알림 목록 처리는 별도의 notification feature가 담당해야 한다.
 
 `CrawlSummaryCreateWidgetContainer`는 URL 또는 원문을 검증하고 `/api/post/api/posts/crawl-summary`를 호출한다. 성공하면 생성된 Post를 표시하고 선택적인 `onCreated` callback을 호출한다.
 
@@ -46,7 +56,7 @@ export default function Page() {
 
 ## MyPostSummaryWidget
 
-`MyPostSummaryWidget`는 브라우저에서 authentik access token을 붙여 `/api/post/api/v1/posts/me/summary`를 호출한다.
+`MyPostSummaryWidget`는 브라우저에서 authentik access token을 붙여 `/api/post/api/posts/me/summary`를 호출한다.
 
 ```tsx
 import { MyPostSummaryWidget } from "@/features/post/components/my-post-summary-widget/my-post-summary-widget"

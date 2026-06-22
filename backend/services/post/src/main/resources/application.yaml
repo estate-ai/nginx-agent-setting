@@ -29,14 +29,18 @@ app:
     audience: ${JWT_AUDIENCE:pickle-web}
   notification:
     exchange: ${POST_NOTIFICATION_EXCHANGE:pickly.events.exchange}
+    mode: ${POST_NOTIFICATION_MODE:NOOP}
   post:
     crawling:
+      default-url: ${POST_CRAWL_DEFAULT_URL:}
       timeout-seconds: ${POST_CRAWL_TIMEOUT_SECONDS:10}
+      article-delay-millis: ${POST_CRAWL_ARTICLE_DELAY_MILLIS:300}
+      max-input-characters: ${POST_CRAWL_MAX_INPUT_CHARACTERS:12000}
     llm:
       provider: ${POST_LLM_PROVIDER:OPENAI}
       api-key: ${OPENAI_API_KEY:}
-      model: ${OPENAI_MODEL:gpt-4o-mini}
-      timeout-seconds: ${OPENAI_TIMEOUT_SECONDS:30}
+      model: ${POST_LLM_MODEL:gpt-4o-mini}
+      timeout-seconds: ${POST_LLM_TIMEOUT_SECONDS:30}
 
 server:
   port: ${PORT:8080}

@@ -1,5 +1,10 @@
 # Post DB
 
+`V5`는 검색 결과 URL 처리 메타데이터(`input_url_type`, 발견 기사 URL, 성공/skip 기사 수,
+관련 키워드, 문단 수, 관련도)를 `post_crawl_sources`에 저장한다. 원문은
+`post_crawl_sources.raw_content`, 모델 결과와 provider/model/token 상태는
+`post_llm_summaries`에 분리해 재요약과 실패 진단이 가능하도록 한다.
+
 `backend/services/post`의 Flyway migration이다.
 
 ```text

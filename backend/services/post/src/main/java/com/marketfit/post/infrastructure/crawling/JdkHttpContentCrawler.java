@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.marketfit.post.core.crawling.ContentCrawler;
 import com.marketfit.post.core.crawling.CrawledDocument;
+import com.marketfit.post.core.crawling.FetchedPage;
 import com.marketfit.post.infrastructure.config.PostCrawlingProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -50,7 +51,7 @@ public class JdkHttpContentCrawler implements ContentCrawler {
     }
 
     @Override
-    public CrawledDocument crawl(String url) {
+    public FetchedPage fetch(String url) {
         URI uri = validateUri(url);
         try {
             HttpRequest request = HttpRequest.newBuilder(uri)
@@ -70,17 +71,7 @@ public class JdkHttpContentCrawler implements ContentCrawler {
                 );
             }
             URI finalUri = validateUri(response.uri().toString());
-            var extracted = contentExtractor.extract(response.body(), finalUri.toString());
-            if (extracted.content().isBlank()) {
-                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "수집된 본문이 비어 있습니다.");
-            }
-            return new CrawledDocument(
-                    finalUri.toString(),
-                    extracted.title(),
-                    extracted.metaDescription(),
-                    extracted.content(),
-                    Instant.now()
-            );
+            return new FetchedPage(finalUri.toString(), response.body(), Instant.now());
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "크롤링 요청이 중단되었습니다.", exception);
@@ -88,6 +79,32 @@ public class JdkHttpContentCrawler implements ContentCrawler {
             throw exception;
         } catch (Exception exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "URL 콘텐츠를 수집하지 못했습니다.", exception);
+        }
+    }
+
+    @Override
+    public CrawledDocument crawl(String url) {
+        FetchedPage page = fetch(url);
+        try {
+            var extracted = contentExtractor.extract(page.html(), page.url());
+            if (extracted.content().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "수집된 본문이 비어 있습니다.");
+            }
+            return new CrawledDocument(
+                    page.url(),
+                    extracted.title(),
+                    extracted.metaDescription(),
+                    extracted.ogTitle(),
+                    extracted.ogDescription(),
+                    extracted.usedSelector(),
+                    extracted.paragraphs(),
+                    extracted.content(),
+                    page.collectedAt()
+            );
+        } catch (ResponseStatusException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "HTML 본문을 추출하지 못했습니다.", exception);
         }
     }
 
