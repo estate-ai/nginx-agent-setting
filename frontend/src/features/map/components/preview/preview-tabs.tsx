@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { EstimatedSalesRanking } from "@/features/map/components/detail/estimated-sales-ranking"
-import { FranchiseRecommendations } from "@/features/map/components/detail/franchise-recommendations"
+import { PreviewEstimatedSalesRanking } from "@/features/map/components/preview/estimated-sales-ranking"
+import { PreviewFranchiseRecommendations } from "@/features/map/components/preview/franchise-recommendations"
 import type { MapTab } from "@/features/map/types/map"
 import type { DistrictData } from "@/features/startup/lib/data"
 import {
@@ -12,11 +12,11 @@ import {
   TabsTrigger,
 } from "@/shared/components/ui/tabs"
 
-type DetailPreviewTabsProps = {
+type PreviewTabsProps = {
   tradeArea: DistrictData
 }
 
-export function DetailPreviewTabs({ tradeArea }: DetailPreviewTabsProps) {
+export function PreviewTabs({ tradeArea }: PreviewTabsProps) {
   const [activeTab, setActiveTab] = useState<MapTab>("sales")
 
   return (
@@ -29,10 +29,10 @@ export function DetailPreviewTabs({ tradeArea }: DetailPreviewTabsProps) {
         <TabsTrigger value="franchises">프랜차이즈 추천</TabsTrigger>
       </TabsList>
       <TabsContent value="sales" className="mt-0">
-        <EstimatedSalesRanking tradeArea={tradeArea} />
+        <PreviewEstimatedSalesRanking tradeArea={tradeArea} />
       </TabsContent>
       <TabsContent value="franchises" className="mt-0">
-        <FranchiseRecommendations tradeArea={tradeArea} />
+        <PreviewFranchiseRecommendations tradeArea={tradeArea} />
       </TabsContent>
     </Tabs>
   )

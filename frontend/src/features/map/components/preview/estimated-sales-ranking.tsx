@@ -1,12 +1,12 @@
 import type { DistrictData } from "@/features/startup/lib/data"
 
-type EstimatedSalesRankingProps = {
+type PreviewEstimatedSalesRankingProps = {
   tradeArea: DistrictData
 }
 
-export function EstimatedSalesRanking({
+export function PreviewEstimatedSalesRanking({
   tradeArea,
-}: EstimatedSalesRankingProps) {
+}: PreviewEstimatedSalesRankingProps) {
   return (
     <div>
       <p className="mb-3 text-xs text-muted-foreground">
