@@ -319,7 +319,6 @@ services:
       - app.api.openapiPath=/v3/api-docs
       - app.api.schemasType=zod
 
-<<<<<<< Updated upstream
   onboarding-service:
     build: ./backend/services/onboarding-service
     container_name: onboarding-service
@@ -380,8 +379,6 @@ services:
       - app.api.publicPath=/api/post
       - app.api.openapiPath=/v3/api-docs
       - app.api.schemasType=zod
-=======
->>>>>>> Stashed changes
 volumes:
   authentik_postgres_data:
   community_postgres_data:
