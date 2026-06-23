@@ -61,4 +61,6 @@ async def list_llm_models(
         ) from None
 
 
-app.include_router(workspace_router)
+# LangGraph custom auth middleware가 app.routes를 직접 순회하므로,
+# FastAPI 일부 버전의 지연 _IncludedRouter 대신 실제 APIRoute만 등록한다.
+app.router.routes.extend(workspace_router.routes)
