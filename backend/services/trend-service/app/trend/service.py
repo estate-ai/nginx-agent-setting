@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from app.core.config import settings
-from app.models.commercial_trend.features import HORIZON_DAYS
 from app.models.commercial_trend.predict import load_meta
 from app.models.commercial_trend.runtime import get_theme_rankings
 from app.trend.contracts import (
@@ -123,16 +122,11 @@ def build_banner(data_mode: str | None = None) -> TrendForecastBanner:
     for key, label in PREDICTIVE_THEMES:
         metrics = _predictive_metrics(rankings.get(key, []))
         if metrics:
-            themes.append(TrendForecastTheme(key=key, label=label, score_type="forecast", metrics=metrics))
-    # 주말 인기: 전체 주제의 weekend_ratio에서 파생(예측 아님 → weekend_affinity)
+            themes.append(TrendForecastTheme(key=key, label=label, metrics=metrics))
+    # 주말 인기: 전체 주제의 weekend_ratio에서 파생
     weekend_metrics = _weekend_metrics(rankings.get("all", []))
     if weekend_metrics:
-        themes.insert(
-            1,
-            TrendForecastTheme(
-                key="weekend", label=WEEKEND_LABEL, score_type="weekend_affinity", metrics=weekend_metrics
-            ),
-        )
+        themes.insert(1, TrendForecastTheme(key="weekend", label=WEEKEND_LABEL, metrics=weekend_metrics))
 
     all_metrics = themes[0].metrics if themes else []
     if all_metrics:
@@ -153,16 +147,4 @@ def build_banner(data_mode: str | None = None) -> TrendForecastBanner:
         secondary_cta=TrendForecastCta(label="성향 분석 먼저 하기", href="/onboarding"),
         metrics=all_metrics,
         themes=themes,
-        as_of_date=_data_as_of(mode),
-        forecast_days=HORIZON_DAYS,
     )
-
-
-def _data_as_of(data_mode: str) -> str | None:
-    """배너에 표시할 데이터 기준일(예측이 쓰는 최신 데이터 일자)."""
-    if data_mode != "db":
-        return None
-    from app.trend.repository import last_trained_as_of
-
-    as_of = last_trained_as_of()
-    return str(as_of) if as_of is not None else None
