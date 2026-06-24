@@ -63,11 +63,7 @@ function DetailReportContent({ mode }: { mode: DetailReportMode }) {
   )
 }
 
-export function DetailReport({
-  mode = "page",
-}: {
-  mode?: DetailReportMode
-}) {
+export function DetailReport({ mode = "page" }: { mode?: DetailReportMode }) {
   return (
     <Suspense
       fallback={
