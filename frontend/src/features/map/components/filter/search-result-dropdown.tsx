@@ -12,6 +12,9 @@ type SearchResultDropdownProps = {
 
 const MAX_VISIBLE_RESULT_COUNT = 8
 
+const formatManwon = (value: number) =>
+  `${Math.round(value / 10_000).toLocaleString()}만원`
+
 export function SearchResultDropdown({
   areas,
   isError,
@@ -78,8 +81,18 @@ export function SearchResultDropdown({
                   {area.dongName}
                 </span>
                 <span className="block truncate text-xs text-muted-foreground">
-                  {area.sigunguName}
+                  {area.industryName
+                    ? `${area.sigunguName} · ${area.industryName}`
+                    : area.sigunguName}
                 </span>
+                {area.rank || area.estimatedSalesAmount ? (
+                  <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                    {area.rank ? `매출 ${area.rank}위` : "매출 정보"}
+                    {area.estimatedSalesAmount
+                      ? ` · ${formatManwon(area.estimatedSalesAmount)}`
+                      : ""}
+                  </span>
+                ) : null}
               </span>
             </Button>
           ))}

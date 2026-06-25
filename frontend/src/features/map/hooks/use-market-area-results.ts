@@ -47,7 +47,7 @@ export function useMarketAreaResults() {
   })
 
   return {
-    areas: searchQuery.data?.areas ?? [],
+    areas: hasSearchCondition ? (searchQuery.data?.areas ?? []) : [],
     hasSearchCondition,
     isError: hasSearchCondition ? searchQuery.isError : false,
     isLoading: hasSearchCondition ? searchQuery.isLoading : false,

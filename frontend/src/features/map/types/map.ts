@@ -33,6 +33,10 @@ export type MarketSearchArea = {
   centerLng: number
   dongCode: DongCode
   dongName: string
+  estimatedSalesAmount?: number
+  industryCode?: string
+  industryName?: string
+  rank?: number
   sigunguCode: string
   sigunguName: string
 }
@@ -40,13 +44,6 @@ export type MarketSearchArea = {
 export type MarketRecommendedArea = {
   dongCode: DongCode
   score: number
-}
-
-export type MarketScrapTargetType = "dong" | "franchise"
-
-export type MarketScrapTarget = {
-  id: string
-  type: MarketScrapTargetType
 }
 
 export type MarketFranchiseRecommendation = {
@@ -86,6 +83,14 @@ export type HourlyFootTraffic = {
   value: number
 }
 
+export type FootTrafficData = {
+  points: HourlyFootTraffic[]
+  peakTimeSlot?: string
+  peakWeekday?: string
+  total: number
+  youngAdultRatio?: number
+}
+
 export type ResidentPopulationByAge = {
   ageGroup: string
   male: number
@@ -97,10 +102,11 @@ export type ResidentPopulation = {
   byAge: ResidentPopulationByAge[]
 }
 
-export type SectorWeekdayWeekendSales = {
-  sector: string
+export type WeekdayWeekendSalesSummary = {
   weekday: number
+  weekdayRatio: number
   weekend: number
+  weekendRatio: number
 }
 
 export type SectorSalesRank = {
@@ -112,11 +118,26 @@ export type SectorSalesRank = {
   salesPerStore: number
 }
 
+export type IndustryCompetitionRank = {
+  closeRate: number
+  closedStores: number
+  franchiseStores: number
+  industryCode: string
+  industryName: string
+  openRate: number
+  openedStores: number
+  rank: number
+  totalStores: number
+}
+
 export type CompetitionStats = {
   storeCount: number
   franchiseStoreCount: number
   openCount: number
   closeCount: number
+  lowClosureRateTop3: IndustryCompetitionRank[]
+  highClosureRateTop3: IndustryCompetitionRank[]
+  highOpenRateTop3: IndustryCompetitionRank[]
 }
 
 export type CommercialChangeIndicator = {
@@ -125,11 +146,18 @@ export type CommercialChangeIndicator = {
   description: string
 }
 
+export type DetailDataQuality = {
+  availableSections: string[]
+  missingSections: string[]
+  note: string
+}
+
 export type DetailReportData = {
-  footTraffic: HourlyFootTraffic[]
-  residentPopulation: ResidentPopulation
-  sectorWeekdayWeekendSales: SectorWeekdayWeekendSales[]
+  footTraffic: FootTrafficData | null
+  residentPopulation: ResidentPopulation | null
+  weekdayWeekendSales: WeekdayWeekendSalesSummary | null
   sectorSalesRanking: SectorSalesRank[]
-  competition: CompetitionStats
-  commercialChangeIndicator: CommercialChangeIndicator
+  competition: CompetitionStats | null
+  commercialChangeIndicator: CommercialChangeIndicator | null
+  dataQuality: DetailDataQuality
 }

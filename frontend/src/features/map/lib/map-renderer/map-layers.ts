@@ -1,5 +1,4 @@
 import type {
-  CircleLayerSpecification,
   FillLayerSpecification,
   FilterSpecification,
   LineLayerSpecification,
@@ -222,17 +221,21 @@ export const guBoundaryLayer: LineLayerSpecification = {
   type: "line",
 }
 
-export const searchResultMarkerLayer: CircleLayerSpecification = {
+export const searchResultMarkerLayer: SymbolLayerSpecification = {
   id: SEARCH_RESULT_MARKER_LAYER_ID,
+  layout: {
+    "text-allow-overlap": true,
+    "text-anchor": "bottom",
+    "text-field": "📍",
+    "text-size": 26,
+  },
   paint: {
-    "circle-color": mapPalette.searchMarkerFill,
-    "circle-opacity": 0.92,
-    "circle-radius": 7,
-    "circle-stroke-color": "#ffffff",
-    "circle-stroke-width": 2,
+    "text-color": mapPalette.searchMarkerFill,
+    "text-halo-color": "#ffffff",
+    "text-halo-width": 1.5,
   },
   source: SEARCH_RESULT_SOURCE_ID,
-  type: "circle",
+  type: "symbol",
 }
 
 export const searchResultLabelLayer: SymbolLayerSpecification = {
@@ -241,7 +244,7 @@ export const searchResultLabelLayer: SymbolLayerSpecification = {
     "text-anchor": "top",
     "text-field": ["get", "name"],
     "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
-    "text-offset": [0, 0.9],
+    "text-offset": [0, 0.2],
     "text-size": 11,
   },
   paint: {

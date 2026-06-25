@@ -25,49 +25,58 @@ export function SectorSalesRankingSection({
         <BarChart3 className="h-4 w-4 text-primary" />
         업종별 추정매출
       </h3>
-      <div className="mt-4 overflow-x-auto">
-        <Table className="min-w-[720px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead>순위</TableHead>
-              <TableHead>업종</TableHead>
-              <TableHead>추정매출</TableHead>
-              <TableHead>전분기 대비</TableHead>
-              <TableHead>점포 수</TableHead>
-              <TableHead>점포당 매출 추정</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rankings.map((row) => (
-              <TableRow key={row.rank}>
-                <TableCell className="font-mono font-semibold text-foreground">
-                  {row.rank}
-                </TableCell>
-                <TableCell className="font-medium text-foreground">
-                  {row.sector}
-                </TableCell>
-                <TableCell className="font-mono">
-                  {row.estimatedSales.toLocaleString()}만원
-                </TableCell>
-                <TableCell
-                  className={`font-mono font-medium ${
-                    row.qoqChange >= 0 ? "text-foreground" : "text-destructive"
-                  }`}
-                >
-                  {row.qoqChange >= 0 ? "+" : ""}
-                  {row.qoqChange}%
-                </TableCell>
-                <TableCell className="font-mono">
-                  {row.storeCount.toLocaleString()}개
-                </TableCell>
-                <TableCell className="font-mono">
-                  {row.salesPerStore.toLocaleString()}만원
-                </TableCell>
+      {rankings.length === 0 ? (
+        <p className="mt-4 rounded-lg border border-dashed px-3 py-4 text-xs text-muted-foreground">
+          선택한 기간과 행정동에는 업종별 추정매출 데이터가 없습니다.
+        </p>
+      ) : null}
+      {rankings.length > 0 ? (
+        <div className="mt-4 overflow-x-auto">
+          <Table className="min-w-[720px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>순위</TableHead>
+                <TableHead>업종</TableHead>
+                <TableHead>추정매출</TableHead>
+                <TableHead>전분기 대비</TableHead>
+                <TableHead>점포 수</TableHead>
+                <TableHead>점포당 매출 추정</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {rankings.map((row) => (
+                <TableRow key={row.rank}>
+                  <TableCell className="font-mono font-semibold text-foreground">
+                    {row.rank}
+                  </TableCell>
+                  <TableCell className="font-medium text-foreground">
+                    {row.sector}
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    {row.estimatedSales.toLocaleString()}만원
+                  </TableCell>
+                  <TableCell
+                    className={`font-mono font-medium ${
+                      row.qoqChange >= 0
+                        ? "text-foreground"
+                        : "text-destructive"
+                    }`}
+                  >
+                    {row.qoqChange >= 0 ? "+" : ""}
+                    {row.qoqChange}%
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    {row.storeCount.toLocaleString()}개
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    {row.salesPerStore.toLocaleString()}만원
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : null}
     </section>
   )
 }
