@@ -1,4 +1,3 @@
-import { ScrapButton } from "@/features/map/components/preview/scrap-button"
 import type { MarketFranchiseRecommendation } from "@/features/map/types/map"
 
 type PreviewFranchiseRecommendationsProps = {
@@ -22,7 +21,7 @@ export function PreviewFranchiseRecommendations({
       {franchises.map((franchise) => (
         <div
           key={franchise.franchiseId}
-          className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-3"
+          className="rounded-lg border border-border px-3 py-3"
         >
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-foreground">
@@ -35,10 +34,6 @@ export function PreviewFranchiseRecommendations({
                 : ` · 예상 창업 비용 ${franchise.expectedStartupCost.toLocaleString()}만원`}
             </p>
           </div>
-          <ScrapButton
-            label="브랜드 스크랩"
-            target={{ id: franchise.franchiseId, type: "franchise" }}
-          />
         </div>
       ))}
     </div>

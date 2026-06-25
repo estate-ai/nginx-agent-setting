@@ -1,6 +1,6 @@
 import { Activity } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import type { HourlyFootTraffic } from "@/features/map/types/map"
+import type { FootTrafficData, HourlyFootTraffic } from "@/features/map/types/map"
 import {
   Card,
   CardContent,
@@ -17,76 +17,65 @@ type FootTrafficChartProps = {
   points: HourlyFootTraffic[]
 }
 
-const getAverage = (values: number[]) =>
-  values.length === 0
-    ? 0
-    : values.reduce((total, value) => total + value, 0) / values.length
+type FootTrafficSummaryPanelProps = {
+  footTraffic: FootTrafficData
+}
 
 const getOrderedPoints = (points: HourlyFootTraffic[]) =>
   [...points].sort((a, b) => Number(a.hour) - Number(b.hour))
 
-function FootTrafficSummaryPanel({ points }: FootTrafficChartProps) {
-  const orderedPoints = getOrderedPoints(points)
-  const average = Math.round(
-    getAverage(orderedPoints.map((point) => point.value))
-  )
-  const peak = orderedPoints.reduce(
-    (currentPeak, point) =>
-      point.value > currentPeak.value ? point : currentPeak,
-    { hour: "-", value: 0 }
-  )
-  const quiet = orderedPoints.reduce(
-    (currentQuiet, point) =>
-      point.value < currentQuiet.value ? point : currentQuiet,
-    { hour: "-", value: Number.POSITIVE_INFINITY }
-  )
-  const topHours = [...orderedPoints]
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 3)
+const weekdayLabels: Record<string, string> = {
+  FRI: "금요일",
+  MON: "월요일",
+  SAT: "토요일",
+  SUN: "일요일",
+  THU: "목요일",
+  TUE: "화요일",
+  WED: "수요일",
+}
+
+function FootTrafficSummaryPanel({
+  footTraffic,
+}: FootTrafficSummaryPanelProps) {
+  const peakWeekday = footTraffic.peakWeekday
+    ? (weekdayLabels[footTraffic.peakWeekday] ?? footTraffic.peakWeekday)
+    : "-"
+  const youngAdultRatio =
+    footTraffic.youngAdultRatio === undefined
+      ? "-"
+      : `${footTraffic.youngAdultRatio.toFixed(1)}%`
 
   return (
     <aside className="border-t pt-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
       <h3 className="text-xs font-semibold text-foreground">유동 요약</h3>
       <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-5 lg:grid-cols-1">
         <div>
-          <dt className="text-[10px] text-muted-foreground">시간당 평균</dt>
+          <dt className="text-[10px] text-muted-foreground">총 유동인구</dt>
           <dd className="mt-0.5 text-lg font-semibold text-foreground">
-            {average.toLocaleString()}명
+            {footTraffic.total.toLocaleString()}명
           </dd>
         </div>
         <div>
-          <dt className="text-[10px] text-muted-foreground">피크 시간</dt>
+          <dt className="text-[10px] text-muted-foreground">피크 시간대</dt>
           <dd className="mt-0.5 text-lg font-semibold text-foreground">
-            {peak.hour === "-" ? "-" : `${peak.hour}:00`}
+            {footTraffic.peakTimeSlot ?? "-"}
           </dd>
         </div>
         <div>
-          <dt className="text-[10px] text-muted-foreground">피크 유동인구</dt>
+          <dt className="text-[10px] text-muted-foreground">피크 요일</dt>
           <dd className="mt-0.5 text-sm font-semibold text-foreground">
-            {peak.value.toLocaleString()}명
+            {peakWeekday}
           </dd>
         </div>
         <div>
-          <dt className="text-[10px] text-muted-foreground">한산 시간</dt>
+          <dt className="text-[10px] text-muted-foreground">
+            20·30대 비중
+          </dt>
           <dd className="mt-0.5 text-sm font-semibold text-foreground">
-            {quiet.hour === "-" ? "-" : `${quiet.hour}:00`}
+            {youngAdultRatio}
           </dd>
         </div>
       </dl>
-
-      <div className="mt-5 border-t pt-4">
-        <p className="text-[10px] text-muted-foreground">상위 시간대</p>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {topHours.map((point) => (
-            <span
-              key={point.hour}
-              className="rounded-md bg-muted px-2 py-1 text-[10px] font-medium text-foreground"
-            >
-              {point.hour}:00
-            </span>
-          ))}
-        </div>
-      </div>
     </aside>
   )
 }
@@ -153,7 +142,11 @@ function FootTrafficChart({ points }: FootTrafficChartProps) {
   )
 }
 
-export function FootTrafficChartCard({ points }: FootTrafficChartProps) {
+export function FootTrafficChartCard({
+  footTraffic,
+}: {
+  footTraffic: FootTrafficData | null
+}) {
   return (
     <Card className="lg:col-span-2">
       <CardHeader>
@@ -163,13 +156,21 @@ export function FootTrafficChartCard({ points }: FootTrafficChartProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_14rem] lg:items-center">
-        <div className="min-w-0 lg:self-center">
-          <FootTrafficChart points={points} />
-          <p className="mt-3 text-[10px] text-muted-foreground">
-            서울시 상권분석서비스 행정동별 생활인구 기준
+        {footTraffic ? (
+          <>
+            <div className="min-w-0 lg:self-center">
+              <FootTrafficChart points={footTraffic.points} />
+              <p className="mt-3 text-[10px] text-muted-foreground">
+                서울시 상권분석서비스 행정동별 생활인구 기준
+              </p>
+            </div>
+            <FootTrafficSummaryPanel footTraffic={footTraffic} />
+          </>
+        ) : (
+          <p className="text-xs leading-relaxed text-muted-foreground lg:col-span-2">
+            선택한 기간과 행정동에는 유동인구 데이터가 없습니다.
           </p>
-        </div>
-        <FootTrafficSummaryPanel points={points} />
+        )}
       </CardContent>
     </Card>
   )

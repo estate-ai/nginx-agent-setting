@@ -1,6 +1,9 @@
 import { Store } from "lucide-react"
 import { Cell, Pie, PieChart } from "recharts"
-import type { CompetitionStats } from "@/features/map/types/map"
+import type {
+  CompetitionStats,
+  IndustryCompetitionRank,
+} from "@/features/map/types/map"
 import {
   ChartContainer,
   ChartTooltip,
@@ -9,6 +12,50 @@ import {
 
 type CompetitionAnalysisProps = {
   competition: CompetitionStats
+}
+
+type CompetitionInsightGroup = {
+  description: string
+  items: IndustryCompetitionRank[]
+  label: string
+  valueKey: "closeRate" | "openRate"
+}
+
+const formatRate = (value: number) => `${value.toFixed(1)}%`
+
+function CompetitionInsightList({
+  description,
+  items,
+  label,
+  valueKey,
+}: CompetitionInsightGroup) {
+  if (items.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-background/70 p-3">
+      <div className="mb-2">
+        <p className="text-xs font-medium text-foreground">{label}</p>
+        <p className="mt-0.5 text-[10px] text-muted-foreground">
+          {description}
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {items.slice(0, 3).map((item) => (
+          <span
+            key={`${label}-${item.industryCode}-${item.rank}`}
+            className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground"
+          >
+            <span className="font-medium text-foreground">
+              {item.industryName}
+            </span>{" "}
+            {formatRate(item[valueKey])}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export function CompetitionAnalysisSection({
@@ -36,6 +83,26 @@ export function CompetitionAnalysisSection({
     1
   )
   const netStoreChange = competition.openCount - competition.closeCount
+  const insightGroups: CompetitionInsightGroup[] = [
+    {
+      description: "폐업 부담이 상대적으로 낮은 업종입니다.",
+      items: competition.lowClosureRateTop3,
+      label: "폐업률 낮은 업종",
+      valueKey: "closeRate",
+    },
+    {
+      description: "폐업률이 높아 진입 리스크를 확인해야 합니다.",
+      items: competition.highClosureRateTop3,
+      label: "폐업률 높은 업종",
+      valueKey: "closeRate",
+    },
+    {
+      description: "신규 점포 진입이 활발한 업종입니다.",
+      items: competition.highOpenRateTop3,
+      label: "개업률 높은 업종",
+      valueKey: "openRate",
+    },
+  ]
 
   return (
     <section aria-labelledby="competition-analysis-title">
@@ -152,6 +219,13 @@ export function CompetitionAnalysisSection({
           </div>
         </section>
       </div>
+      {insightGroups.some((group) => group.items.length > 0) ? (
+        <div className="mt-6 grid gap-3 lg:grid-cols-3">
+          {insightGroups.map((group) => (
+            <CompetitionInsightList key={group.label} {...group} />
+          ))}
+        </div>
+      ) : null}
     </section>
   )
 }

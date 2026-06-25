@@ -12,7 +12,6 @@ import { fetchPublicMarketApi } from "@/features/map/lib/map-public-fetch"
 import type {
   DongCode,
   MarketRecommendedArea,
-  MarketScrapTarget,
 } from "@/features/map/types/map"
 import { getGetAdminAreasUrl } from "@/shared/api/generated/market/endpoints/admin-areas/admin-areas"
 import {
@@ -77,8 +76,3 @@ export const getMarketIndustries = async (): Promise<IndustryMajorOption[]> =>
 export const getMarketRecommendedAreas = async (): Promise<
   MarketRecommendedArea[]
 > => []
-
-// TODO: 상권(행정동)·프랜차이즈 스크랩 API가 추가되면 실제 Orval mutation으로 연결한다.
-export const scrapMarketTarget = async (
-  target: MarketScrapTarget
-): Promise<MarketScrapTarget> => target

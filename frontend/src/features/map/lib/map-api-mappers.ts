@@ -3,6 +3,7 @@ import type {
   AdminAreaFeature,
   AdminAreaMapData,
   DetailReportData,
+  IndustryCompetitionRank,
   MarketPreviewData,
   MarketPreviewIndustryRanking,
   MarketSearchArea,
@@ -39,6 +40,10 @@ const toStringValue = (value: string | undefined, fallback = "") =>
 
 const toNumberValue = (value: number | undefined, fallback = 0) =>
   value ?? fallback
+
+const toOptionalNumber = (value: number | undefined) => value
+
+const toOptionalString = (value: string | undefined) => value || undefined
 
 const isGeometry = (geometry: unknown): geometry is Geometry =>
   typeof geometry === "object" &&
@@ -133,6 +138,10 @@ const toMarketSearchArea = (
   centerLng: area.centerLng ?? 0,
   dongCode: toStringValue(area.dongCode),
   dongName: toStringValue(area.dongName, area.dongCode),
+  estimatedSalesAmount: toOptionalNumber(area.estimatedSalesAmount),
+  industryCode: toOptionalString(area.industryCode),
+  industryName: toOptionalString(area.industryName),
+  rank: toOptionalNumber(area.rank),
   sigunguCode: toStringValue(area.sigunguCode),
   sigunguName: toStringValue(area.sigunguName),
 })
@@ -187,11 +196,29 @@ export const toAdminAreaMapData = (
 export const toMarketPreviewData = (
   payload: GeneratedMarketPreview | undefined
 ): MarketPreviewData => ({
-  // TODO: preview 응답에 프랜차이즈 추천 목록이 추가되면 실제 필드로 변환한다.
+  // 프랜차이즈 추천은 market preview 응답에 포함되면 여기서 매핑한다.
   franchiseRecommendations: [],
   industryRankings: (payload?.industryRankings ?? []).map(
     toMarketPreviewRanking
   ),
+})
+
+const toIndustryCompetitionRank = (
+  item: NonNullable<GeneratedMarketReport["stores"]>["lowClosureRateTop3"] extends
+    | (infer Ranking)[]
+    | undefined
+    ? Ranking
+    : never
+): IndustryCompetitionRank => ({
+  closeRate: toNumberValue(item.closeRate),
+  closedStores: toNumberValue(item.closedStores),
+  franchiseStores: toNumberValue(item.franchiseStores),
+  industryCode: toStringValue(item.industryCode),
+  industryName: toStringValue(item.industryName),
+  openRate: toNumberValue(item.openRate),
+  openedStores: toNumberValue(item.openedStores),
+  rank: toNumberValue(item.rank),
+  totalStores: toNumberValue(item.totalStores),
 })
 
 export const toDetailReportData = (
@@ -203,46 +230,77 @@ export const toDetailReportData = (
   ).filter(Boolean)
 
   return {
-    commercialChangeIndicator: {
-      code:
-        payload.tradeAreaChange?.changeIndex === "HH" ||
-        payload.tradeAreaChange?.changeIndex === "HL" ||
-        payload.tradeAreaChange?.changeIndex === "LH" ||
-        payload.tradeAreaChange?.changeIndex === "LL"
-          ? payload.tradeAreaChange.changeIndex
-          : "LL",
-      description: toStringValue(payload.tradeAreaChange?.displayDescription),
-      label: toStringValue(payload.tradeAreaChange?.changeIndexName),
-    },
-    competition: {
-      closeCount: toNumberValue(payload.stores?.closedStores),
-      franchiseStoreCount: toNumberValue(payload.stores?.franchiseStores),
-      openCount: toNumberValue(payload.stores?.openedStores),
-      storeCount: toNumberValue(payload.stores?.totalStores),
-    },
-    footTraffic: (payload.floatingPopulation?.timeSlots ?? []).map((slot) => ({
-      hour: toStringValue(slot.timeSlot).split("-")[0] ?? "",
-      value: toNumberValue(slot.count),
-    })),
-    residentPopulation: {
-      byAge: ageGroups.map((ageGroup) => {
-        const male =
-          genderAgeGroups.find(
-            (item) => item.ageGroup === ageGroup && item.gender === "male"
-          )?.count ?? 0
-        const female =
-          genderAgeGroups.find(
-            (item) => item.ageGroup === ageGroup && item.gender === "female"
-          )?.count ?? 0
-
-        return {
-          ageGroup: toAgeGroupLabel(ageGroup),
-          female,
-          male,
+    commercialChangeIndicator:
+      payload.tradeAreaChange?.changeIndex === "HH" ||
+      payload.tradeAreaChange?.changeIndex === "HL" ||
+      payload.tradeAreaChange?.changeIndex === "LH" ||
+      payload.tradeAreaChange?.changeIndex === "LL"
+        ? {
+            code: payload.tradeAreaChange.changeIndex,
+            description: toStringValue(
+              payload.tradeAreaChange.displayDescription
+            ),
+            label: toStringValue(payload.tradeAreaChange.changeIndexName),
+          }
+        : null,
+    competition: payload.stores
+      ? {
+          closeCount: toNumberValue(payload.stores.closedStores),
+          franchiseStoreCount: toNumberValue(payload.stores.franchiseStores),
+          highClosureRateTop3: (payload.stores.highClosureRateTop3 ?? []).map(
+            toIndustryCompetitionRank
+          ),
+          highOpenRateTop3: (payload.stores.highOpenRateTop3 ?? []).map(
+            toIndustryCompetitionRank
+          ),
+          lowClosureRateTop3: (payload.stores.lowClosureRateTop3 ?? []).map(
+            toIndustryCompetitionRank
+          ),
+          openCount: toNumberValue(payload.stores.openedStores),
+          storeCount: toNumberValue(payload.stores.totalStores),
         }
-      }),
-      total: toNumberValue(payload.residentPopulation?.total),
+      : null,
+    dataQuality: {
+      availableSections: payload.dataQuality?.availableSections ?? [],
+      missingSections: payload.dataQuality?.missingSections ?? [],
+      note: toStringValue(payload.dataQuality?.note),
     },
+    footTraffic: payload.floatingPopulation
+      ? {
+          peakTimeSlot: toOptionalString(payload.floatingPopulation.peakTimeSlot),
+          peakWeekday: toOptionalString(payload.floatingPopulation.peakWeekday),
+          points: (payload.floatingPopulation.timeSlots ?? []).map((slot) => ({
+            hour: toStringValue(slot.timeSlot).split("-")[0] ?? "",
+            value: toNumberValue(slot.count),
+          })),
+          total: toNumberValue(payload.floatingPopulation.total),
+          youngAdultRatio: toOptionalNumber(
+            payload.floatingPopulation.youngAdultRatio
+          ),
+        }
+      : null,
+    residentPopulation: payload.residentPopulation
+      ? {
+          byAge: ageGroups.map((ageGroup) => {
+            const male =
+              genderAgeGroups.find(
+                (item) => item.ageGroup === ageGroup && item.gender === "male"
+              )?.count ?? 0
+            const female =
+              genderAgeGroups.find(
+                (item) =>
+                  item.ageGroup === ageGroup && item.gender === "female"
+              )?.count ?? 0
+
+            return {
+              ageGroup: toAgeGroupLabel(ageGroup),
+              female,
+              male,
+            }
+          }),
+          total: toNumberValue(payload.residentPopulation.total),
+        }
+      : null,
     sectorSalesRanking: (payload.sales?.industryRankings ?? []).map(
       (ranking) => ({
         estimatedSales: toManwon(ranking.estimatedSalesAmount),
@@ -253,13 +311,14 @@ export const toDetailReportData = (
         storeCount: toNumberValue(ranking.storeCount),
       })
     ),
-    sectorWeekdayWeekendSales: [
-      {
-        sector: "전체",
-        weekday: toManwon(payload.sales?.weekdaySalesAmount),
-        weekend: toManwon(payload.sales?.weekendSalesAmount),
-      },
-    ],
+    weekdayWeekendSales: payload.sales
+      ? {
+          weekday: toManwon(payload.sales.weekdaySalesAmount),
+          weekdayRatio: toNumberValue(payload.sales.weekdaySalesRatio),
+          weekend: toManwon(payload.sales.weekendSalesAmount),
+          weekendRatio: toNumberValue(payload.sales.weekendSalesRatio),
+        }
+      : null,
   }
 }
 

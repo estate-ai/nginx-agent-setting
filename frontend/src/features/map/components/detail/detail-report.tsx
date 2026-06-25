@@ -37,11 +37,6 @@ function DetailReportContent({ mode }: { mode: DetailReportMode }) {
       isLoading={isLoading}
       onBack={handleBack}
       report={report}
-      summary={
-        dongCode
-          ? `${dong?.sigunguName ?? "-"} · 행정동 코드 ${dongCode}`
-          : "지도에서 행정동을 선택하면 상권 상세 리포트를 확인할 수 있습니다."
-      }
     />
   )
 }

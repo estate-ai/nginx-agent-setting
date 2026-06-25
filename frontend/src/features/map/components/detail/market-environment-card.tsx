@@ -7,8 +7,8 @@ import type {
 import { Card, CardContent } from "@/shared/components/ui/card"
 
 type MarketEnvironmentCardProps = {
-  competition: CompetitionStats
-  indicator: CommercialChangeIndicator
+  competition: CompetitionStats | null
+  indicator: CommercialChangeIndicator | null
 }
 
 export function MarketEnvironmentCard({
@@ -18,9 +18,13 @@ export function MarketEnvironmentCard({
   return (
     <Card className="lg:col-span-2">
       <CardContent className="space-y-8">
-        <CompetitionAnalysisSection competition={competition} />
-        <div className="border-t" />
-        <CommercialChangeIndicatorSection indicator={indicator} />
+        {competition ? (
+          <CompetitionAnalysisSection competition={competition} />
+        ) : null}
+        {competition && indicator ? <div className="border-t" /> : null}
+        {indicator ? (
+          <CommercialChangeIndicatorSection indicator={indicator} />
+        ) : null}
       </CardContent>
     </Card>
   )
