@@ -32,13 +32,7 @@ public class MarketSearchJdbcRepository {
      */
     public List<AreaRow> searchAreasByName(String keyword, Long periodId) {
         String sql = """
-                WITH display_alias(boundary_dong_code, display_code, display_name) AS (
-                    VALUES
-                        ('11680511', '11680511', '개포3동'),
-                        ('11740760', '11740520', '상일동'),
-                        ('11740770', '11740520', '상일동')
-                ),
-                analysis_top AS (
+                WITH analysis_top AS (
                     SELECT DISTINCT ON (d.adm_dr_cd)
                         d.adm_dr_cd AS analysis_code,
                         d.adm_dr_nm AS analysis_name,
@@ -52,49 +46,32 @@ public class MarketSearchJdbcRepository {
                     WHERE r.period_id = :periodId
                       AND r.sales_amount_rank = 1
                     ORDER BY d.adm_dr_cd, r.thsmon_selng_amt DESC NULLS LAST
-                ),
-                report_dong AS (
-                    SELECT
-                        COALESCE(a.display_code, d.adm_dr_cd) AS code,
-                        COALESCE(a.display_name, d.adm_dr_nm) AS name,
-                        s.sigungu_cd AS sigungu_code,
-                        s.sigungu_nm AS sigungu_name,
-                        AVG(d.center_lat)::numeric(10, 7) AS center_lat,
-                        AVG(d.center_lng)::numeric(10, 7) AS center_lng
-                    FROM market_admin_dong_boundaries d
-                    LEFT JOIN display_alias a ON a.boundary_dong_code = d.adm_dr_cd
-                    LEFT JOIN market_admin_sigungu s ON s.id = d.sigungu_id
-                    WHERE d.boundary IS NOT NULL
-                    GROUP BY
-                        COALESCE(a.display_code, d.adm_dr_cd),
-                        COALESCE(a.display_name, d.adm_dr_nm),
-                        s.sigungu_cd,
-                        s.sigungu_nm
                 )
-                SELECT rd.code, rd.name, rd.sigungu_code, rd.sigungu_name,
+                SELECT rd.display_code AS code, rd.display_name AS name,
+                       rd.sigungu_code, rd.sigungu_name,
                        rd.center_lat, rd.center_lng,
                        ti.industry_code, ti.industry_name, ti.estimated_sales_amount
-                FROM report_dong rd
+                FROM market_display_dong_boundaries rd
                 LEFT JOIN LATERAL (
                     SELECT a.industry_code, a.industry_name, a.estimated_sales_amount
                     FROM analysis_top a
-                    WHERE a.analysis_code = CASE rd.code WHEN '11680511' THEN '11680740' ELSE rd.code END
+                    WHERE a.analysis_code = CASE rd.display_code WHEN '11680511' THEN '11680740' ELSE rd.display_code END
                        OR (
                             a.sigungu_prefix = rd.sigungu_code
                             AND translate(a.analysis_name, ' ?・·ㆍ.-', '')
-                                = translate(rd.name, ' ?・·ㆍ.-', '')
+                                = translate(rd.display_name, ' ?・·ㆍ.-', '')
                        )
                     ORDER BY
                         CASE WHEN a.analysis_code
-                                  = CASE rd.code WHEN '11680511' THEN '11680740' ELSE rd.code END
+                                  = CASE rd.display_code WHEN '11680511' THEN '11680740' ELSE rd.display_code END
                              THEN 0 ELSE 1 END,
                         a.estimated_sales_amount DESC NULLS LAST
                     LIMIT 1
                 ) ti ON true
                 WHERE rd.sigungu_name LIKE '%' || :keyword || '%'
-                   OR regexp_replace(rd.name, '[0-9 ·ㆍ]', '', 'g')
+                   OR regexp_replace(rd.display_name, '[0-9 ·ㆍ]', '', 'g')
                           LIKE '%' || regexp_replace(:keyword, '[0-9 ·ㆍ]', '', 'g') || '%'
-                ORDER BY rd.sigungu_code NULLS LAST, rd.code
+                ORDER BY rd.sigungu_code NULLS LAST, rd.display_code
                 """;
 
         return jdbcTemplate.query(
@@ -170,15 +147,15 @@ public class MarketSearchJdbcRepository {
                     COALESCE(da.display_name, d.adm_dr_nm) AS name,
                     s.sigungu_cd AS sigungu_code,
                     s.sigungu_nm AS sigungu_name,
-                    b.center_lat,
-                    b.center_lng,
+                    bc.center_lat,
+                    bc.center_lng,
                     r.sales_amount_rank AS rank,
                     r.thsmon_selng_amt AS estimated_sales_amount
                 FROM market_industry_sales_rank r
                 JOIN market_admin_dongs d ON d.id = r.dong_id
                 LEFT JOIN display_alias da ON da.analysis_code = d.adm_dr_cd
-                LEFT JOIN market_admin_dong_boundaries b
-                    ON b.adm_dr_cd = COALESCE(da.display_code, d.adm_dr_cd)
+                LEFT JOIN market_display_dong_boundaries bc
+                    ON bc.display_code = COALESCE(da.display_code, d.adm_dr_cd)
                 LEFT JOIN market_admin_sigungu s ON s.id = d.sigungu_id
                 WHERE r.period_id = :periodId
                   AND r.industry_id = :industryId

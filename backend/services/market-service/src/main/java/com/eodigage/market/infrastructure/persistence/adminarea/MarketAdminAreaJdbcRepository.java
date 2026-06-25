@@ -39,63 +39,23 @@ public class MarketAdminAreaJdbcRepository {
 
     public List<AdminAreaBoundaryRow> findDongBoundaries(String sigunguCode) {
         String sql = """
-                WITH display_alias(boundary_dong_code, display_code, display_name) AS (
-                    VALUES
-                        ('11680511', '11680511', '개포3동'),
-                        ('11740760', '11740520', '상일동'),
-                        ('11740770', '11740520', '상일동')
-                ),
-                report_boundary AS (
-                    SELECT
-                        COALESCE(a.display_code, d.adm_dr_cd) AS code,
-                        COALESCE(a.display_name, d.adm_dr_nm) AS name,
-                        s.sigungu_cd,
-                        s.sigungu_nm,
-                        MAX(d.base_date) AS base_date,
-                        ST_CollectionExtract(
-                            ST_UnaryUnion(ST_Collect(d.boundary)),
-                            3
-                        ) AS boundary
-                    FROM market_admin_dong_boundaries d
-                    LEFT JOIN display_alias a ON a.boundary_dong_code = d.adm_dr_cd
-                    LEFT JOIN market_admin_sigungu s ON s.id = d.sigungu_id
-                    WHERE (
-                        CAST(:sigunguCode AS varchar) IS NULL
-                        OR s.sigungu_cd = CAST(:sigunguCode AS varchar)
-                    )
-                      AND d.boundary IS NOT NULL
-                    GROUP BY
-                        COALESCE(a.display_code, d.adm_dr_cd),
-                        COALESCE(a.display_name, d.adm_dr_nm),
-                        s.sigungu_cd,
-                        s.sigungu_nm
-                ),
-                normalized AS (
-                    SELECT
-                        code,
-                        name,
-                        sigungu_cd,
-                        sigungu_nm,
-                        base_date,
-                        ST_PointOnSurface(boundary) AS center_point,
-                        boundary
-                    FROM report_boundary
-                    WHERE boundary IS NOT NULL
-                      AND NOT ST_IsEmpty(boundary)
-                )
                 SELECT 'dong' AS area_type,
-                       code,
-                       name,
-                       sigungu_cd AS sigungu_code,
-                       sigungu_nm AS sigungu_name,
+                       display_code AS code,
+                       display_name AS name,
+                       sigungu_code,
+                       sigungu_name,
                        base_date,
-                       ST_Y(center_point)::numeric(10, 7) AS center_lat,
-                       ST_X(center_point)::numeric(10, 7) AS center_lng,
+                       center_lat,
+                       center_lng,
                        ST_AsGeoJSON(
                            ST_SimplifyPreserveTopology(boundary, 0.0005)
                        )::text AS geometry_json
-                FROM normalized
-                ORDER BY sigungu_cd NULLS LAST, code
+                FROM market_display_dong_boundaries
+                WHERE (
+                    CAST(:sigunguCode AS varchar) IS NULL
+                    OR sigungu_code = CAST(:sigunguCode AS varchar)
+                )
+                ORDER BY sigungu_code NULLS LAST, code
                 """;
 
         return jdbcTemplate.query(
