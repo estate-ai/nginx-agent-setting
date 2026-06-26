@@ -10,8 +10,7 @@ export function PreviewFranchiseRecommendations({
   if (franchises.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-border px-3 py-4 text-xs leading-relaxed text-muted-foreground">
-        프랜차이즈 추천 데이터는 백엔드 응답 스펙이 확정되면 같은 탭에
-        연결합니다.
+        이 상권에서 추천할 프랜차이즈 데이터가 없습니다.
       </p>
     )
   }

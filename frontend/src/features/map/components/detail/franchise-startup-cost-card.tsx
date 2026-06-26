@@ -33,7 +33,7 @@ export function FranchiseStartupCostCard({
       <CardContent className="overflow-x-auto">
         {franchises.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            프랜차이즈 예상 창업 비용은 백엔드 응답 스펙이 확정되면 연결합니다.
+            표시할 프랜차이즈 예상 창업 비용 데이터가 없습니다.
           </p>
         ) : (
           <Table className="min-w-[520px]">
