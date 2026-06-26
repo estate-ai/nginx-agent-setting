@@ -21,38 +21,19 @@ public class FranchiseBrandJdbcRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
-    /** 필터 조건에 해당하는 브랜드 총 개수(페이징용). */
-    public long countBrands(String marketIndustryCode, String keyword) {
-        String sql = """
-                SELECT count(*)
-                FROM franchise_brands b
-                LEFT JOIN franchise_industries i ON i.id = b.primary_industry_id
-                WHERE (CAST(:industryCode AS varchar) IS NULL OR i.market_svc_induty_cd = :industryCode)
-                  AND (CAST(:keyword AS varchar) IS NULL OR b.brand_name LIKE '%' || :keyword || '%')
-                """;
-        Long count = jdbcTemplate.queryForObject(
-                sql,
-                new MapSqlParameterSource()
-                        .addValue("industryCode", marketIndustryCode)
-                        .addValue("keyword", keyword),
-                Long.class
-        );
-        return count == null ? 0L : count;
-    }
-
     /**
-     * 브랜드별 창업비용/매출 1페이지 조회.
+     * 업종(svc_induty_cd)의 프랜차이즈 브랜드를 추정매출 내림차순으로 limit개 조회한다.
      *
      * @param marketIndustryCode 상권분석 업종코드(svc_induty_cd) 필터, null이면 전체
-     * @param keyword 브랜드명 부분일치 필터, null이면 전체
+     * @param limit 반환 개수(호출 측에서 상한 클램프 후 전달)
      */
-    public List<FranchiseBrandRow> findBrands(String marketIndustryCode, String keyword, int size, long offset) {
+    public List<FranchiseBrandRow> findTopBrandsByIndustry(String marketIndustryCode, int limit) {
         String sql = """
                 SELECT b.brand_code,
                        b.brand_name,
                        b.company_name,
                        i.induty_mlsfc_nm        AS ftc_industry_name,
-                       i.market_svc_induty_cd_nm AS market_industry_name,
+                       COALESCE(b.market_svc_induty_cd_nm, i.market_svc_induty_cd_nm) AS market_industry_name,
                        COALESCE(ss.base_year, sc.base_year) AS base_year,
                        sc.smtn_amt,
                        sc.jng_bzmn_jng_amt,
@@ -79,18 +60,15 @@ public class FranchiseBrandJdbcRepository {
                     ORDER BY base_year DESC
                     LIMIT 1
                 ) ss ON true
-                WHERE (CAST(:industryCode AS varchar) IS NULL OR i.market_svc_induty_cd = :industryCode)
-                  AND (CAST(:keyword AS varchar) IS NULL OR b.brand_name LIKE '%' || :keyword || '%')
-                ORDER BY b.brand_name, b.brand_code
-                LIMIT :size OFFSET :offset
+                WHERE (CAST(:industryCode AS varchar) IS NULL OR COALESCE(b.market_svc_induty_cd, i.market_svc_induty_cd) = :industryCode)
+                ORDER BY ss.avrg_sls_amt DESC NULLS LAST, b.brand_name, b.brand_code
+                LIMIT :limit
                 """;
         return jdbcTemplate.query(
                 sql,
                 new MapSqlParameterSource()
                         .addValue("industryCode", marketIndustryCode)
-                        .addValue("keyword", keyword)
-                        .addValue("size", size)
-                        .addValue("offset", offset),
+                        .addValue("limit", limit),
                 rowMapper()
         );
     }

@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.eodigage.franchise.application.brand.FranchiseBrandQueryService;
-import com.eodigage.franchise.application.brand.dto.FranchiseBrandPageResponse;
+import com.eodigage.franchise.application.brand.dto.FranchiseBrandListResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,9 +15,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 프랜차이즈 브랜드별 창업예상비용/추정매출 API.
+ * ?꾨옖李⑥씠利?釉뚮옖?쒕퀎 李쎌뾽?덉긽鍮꾩슜/異붿젙留ㅼ텧 API.
  *
- * <p>업종(industryCode)은 상권분석 업종코드(svc_induty_cd) 기준으로 필터한다.
+ * <p>?대? ?쒕퉬??market-service 異붿쿇)?먯꽌留??몄텧?쒕떎. ?낆쥌(industryCode, svc_induty_cd)?쇰줈
+ * ?꾪꽣??異붿젙留ㅼ텧 ?대┝李⑥닚 理쒕? 20媛쒕? 諛섑솚?섎ŉ, 寃???뺣젹/?섏씠吏??듭뀡? ?먯? ?딅뒗??
  */
 @RestController
 @RequestMapping("/api/v1/franchises")
@@ -30,18 +31,14 @@ public class FranchiseBrandController {
     @GetMapping
     @Operation(
             operationId = "getFranchiseBrands",
-            summary = "프랜차이즈 브랜드별 창업예상비용/추정매출 목록"
+            summary = "?낆쥌蹂??꾨옖李⑥씠利?釉뚮옖??紐⑸줉(異붿젙留ㅼ텧 ?곸쐞)"
     )
-    public FranchiseBrandPageResponse getBrands(
-            @Parameter(description = "상권분석 업종코드(svc_induty_cd) 필터")
+    public FranchiseBrandListResponse getBrands(
+            @Parameter(description = "?곴텒遺꾩꽍 ?낆쥌肄붾뱶(svc_induty_cd) ?꾪꽣")
             @RequestParam(required = false) String industryCode,
-            @Parameter(description = "브랜드명 부분일치 필터")
-            @RequestParam(required = false) String keyword,
-            @Parameter(description = "페이지(0부터)")
-            @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "페이지 크기(최대 100)")
+            @Parameter(description = "반환 개수(기본 20). market-service가 전달한 추천 개수를 LIMIT으로 사용")
             @RequestParam(defaultValue = "20") int size
     ) {
-        return franchiseBrandQueryService.getBrands(industryCode, keyword, page, size);
+        return franchiseBrandQueryService.getBrands(industryCode, size);
     }
 }
