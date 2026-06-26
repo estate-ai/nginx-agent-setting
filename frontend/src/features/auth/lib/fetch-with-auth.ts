@@ -49,7 +49,7 @@ export const fetchWithAuth = async <T>(
   const headers = new Headers(init?.headers)
 
   if (!headers.has("authorization") && typeof window !== "undefined") {
-    const accessToken = await getClientOidcAccessToken()
+    const accessToken = await getClientOidcAccessToken().catch(() => null)
 
     if (accessToken) {
       headers.set("authorization", `Bearer ${accessToken}`)
