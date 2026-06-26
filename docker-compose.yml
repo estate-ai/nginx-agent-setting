@@ -359,6 +359,8 @@ services:
       - AUTO_CREATE_SCHEMA=true
       - AGENT_SERVER_INTERNAL_URL=http://127.0.0.1:2024
       - ONBOARDING_SERVICE_URL=http://onboarding-service:8000
+    volumes:
+      - agent_langgraph_api_data:/app/.langgraph_api
     expose:
       - "2024"
     labels:
@@ -452,5 +454,6 @@ volumes:
   onboarding_postgres_data:
   backend_postgres_data:
   agent_postgres_data:
+  agent_langgraph_api_data:
   redis_data:
   minio_data:
