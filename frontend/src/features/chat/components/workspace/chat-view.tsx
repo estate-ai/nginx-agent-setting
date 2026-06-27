@@ -20,7 +20,6 @@ import type { AIMessage, BaseMessage } from "@langchain/core/messages"
 import type { AssembledToolCall } from "@langchain/langgraph-sdk/stream"
 import { HitlInterruptCard } from "@/features/chat/components/hitl/hitl-interrupt-card"
 import { ArtifactActionButtons } from "@/features/chat/components/workspace/artifact-action-buttons"
-import { ChatWelcomeScreen } from "@/features/chat/components/workspace/chat-welcome-screen"
 import { ChatWorkspaceComposer } from "@/features/chat/components/workspace/chat-workspace-composer"
 import { useAutoScroll } from "@/features/chat/hooks/use-auto-scroll"
 import { useLangGraphChatStream } from "@/features/chat/hooks/use-langgraph-chat-stream"
@@ -72,7 +71,6 @@ type ChatViewProps = {
   onSetRightPanel: (panel: ChatRightPanel) => void
   onToggleExpand: () => void
   onToggleRightPanel: () => void
-  showWelcomeScreen?: boolean
 }
 
 export function ChatView({
@@ -87,7 +85,6 @@ export function ChatView({
   onSetRightPanel,
   onToggleExpand,
   onToggleRightPanel,
-  showWelcomeScreen = false,
 }: ChatViewProps) {
   const [draft, setDraft] = React.useState("")
   const {
@@ -122,7 +119,6 @@ export function ChatView({
       }),
     [messages, toolCalls]
   )
-  const isWelcomeScreen = showWelcomeScreen && groupedTurns.turns.length === 0
   React.useEffect(() => {
     setIsSelectionLocked(disabled)
     return () => setIsSelectionLocked(false)
@@ -208,12 +204,6 @@ export function ChatView({
         <div className="mx-auto max-w-2xl min-w-0 px-4 py-6 sm:px-6">
           {isHydrating ? (
             <TypingIndicator label="대화를 불러오는 중" />
-          ) : isWelcomeScreen ? (
-            <ChatWelcomeScreen
-              onSelectSuggestion={(text) => {
-                setDraft(text)
-              }}
-            />
           ) : (
             <div className="space-y-6">
               {groupedTurns.turns.map((turn) =>

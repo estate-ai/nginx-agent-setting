@@ -43,13 +43,22 @@ import { Skeleton } from "@/shared/components/ui/skeleton"
 type ChatWorkspaceThreadViewProps = {
   threadId: string
   starterMessage?: string | null
+  starterSelections?: {
+    selectedArtifactIds?: string[]
+    selectedDocumentIds?: string[]
+  }
 }
 
 function ChatWorkspaceThreadStarter({
   starterMessage,
+  starterSelections,
   threadId,
 }: {
   starterMessage?: string | null
+  starterSelections?: {
+    selectedArtifactIds?: string[]
+    selectedDocumentIds?: string[]
+  }
   threadId: string
 }) {
   const router = useRouter()
@@ -69,14 +78,22 @@ function ChatWorkspaceThreadStarter({
     }
 
     hasSubmittedRef.current = true
-    void sendMessage(trimmedStarterMessage)
+    void sendMessage(trimmedStarterMessage, starterSelections)
       .then(() => {
         router.replace(`/chat/${threadId}`)
       })
       .catch(() => {
         hasSubmittedRef.current = false
       })
-  }, [isBusy, isHydrating, router, sendMessage, starterMessage, threadId])
+  }, [
+    isBusy,
+    isHydrating,
+    router,
+    sendMessage,
+    starterMessage,
+    starterSelections,
+    threadId,
+  ])
 
   return null
 }
@@ -84,6 +101,7 @@ function ChatWorkspaceThreadStarter({
 export function ChatWorkspaceThreadView({
   threadId,
   starterMessage,
+  starterSelections,
 }: ChatWorkspaceThreadViewProps) {
   const toolsQuery = useListLlmToolsApiV1LlmToolsGet({
     query: {
@@ -170,6 +188,7 @@ export function ChatWorkspaceThreadView({
         activeThreadTitle={thread.title}
         appThreadId={thread.id}
         starterMessage={starterMessage}
+        starterSelections={starterSelections}
       />
     </LangGraphChatStreamProvider>
   )
@@ -179,10 +198,15 @@ function ChatThreadWorkspace({
   activeThreadTitle,
   appThreadId,
   starterMessage,
+  starterSelections,
 }: {
   activeThreadTitle: string
   appThreadId: string
   starterMessage?: string | null
+  starterSelections?: {
+    selectedArtifactIds?: string[]
+    selectedDocumentIds?: string[]
+  }
 }) {
   const queryClient = useQueryClient()
   const { resume, toolCalls } = useLangGraphChatStream()
@@ -337,6 +361,7 @@ function ChatThreadWorkspace({
     >
       <ChatWorkspaceThreadStarter
         starterMessage={starterMessage}
+        starterSelections={starterSelections}
         threadId={appThreadId}
       />
       <ChatView
@@ -351,7 +376,6 @@ function ChatThreadWorkspace({
         onSetRightPanel={setRightPanel}
         onToggleExpand={handleToggleExpand}
         onToggleRightPanel={() => setRightPanel({ kind: "library" })}
-        showWelcomeScreen={false}
       />
     </ChatWorkspaceShell>
   )
