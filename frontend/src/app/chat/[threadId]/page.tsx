@@ -1,38 +1,57 @@
+import { z } from "zod"
 import { ChatWorkspaceThreadView } from "@/features/chat/components/workspace/chat-workspace-thread-view"
 
-type SearchParams = Promise<{
-  starter?: string | string[]
-}>
+const getSearchParamList = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value.filter(
+      (item): item is string => typeof item === "string" && item.length > 0
+    )
+  }
+
+  if (typeof value === "string" && value.length > 0) {
+    return [value]
+  }
+
+  return []
+}
+
+const ChatThreadSearchParamsSchema = z.object({
+  starter: z.preprocess(
+    (value) => getSearchParamList(value)[0],
+    z.string().optional()
+  ),
+  documentId: z.preprocess(getSearchParamList, z.array(z.string())),
+  artifactId: z.preprocess(getSearchParamList, z.array(z.string())),
+})
 
 type ChatThreadPageProps = {
   params: Promise<{
     threadId: string
   }>
-  searchParams: SearchParams
+  searchParams?: Promise<Record<string, unknown> | undefined>
 }
 
-const getStarterMessage = async (searchParams: SearchParams) => {
-  const params = await searchParams
-  const starter = params.starter
-
-  if (Array.isArray(starter)) {
-    return starter[0] ?? null
-  }
-
-  return starter ?? null
-}
-
-export default async function ChatThreadPage({
-  params,
-  searchParams,
-}: ChatThreadPageProps) {
-  const { threadId } = await params
-  const starterMessage = await getStarterMessage(searchParams)
+export default async function ChatThreadPage(props: ChatThreadPageProps) {
+  const { threadId } = await props.params
+  const rawSearchParams = (await props.searchParams) ?? {}
+  const parsedSearchParams =
+    ChatThreadSearchParamsSchema.safeParse(rawSearchParams)
+  const starterPayload = parsedSearchParams.success
+    ? parsedSearchParams.data
+    : {
+        starter: undefined,
+        documentId: [],
+        artifactId: [],
+      }
 
   return (
     <ChatWorkspaceThreadView
       threadId={threadId}
-      starterMessage={starterMessage}
+      starterMessage={starterPayload.starter ?? null}
+      starterSelections={{
+        selectedArtifactIds: starterPayload.artifactId,
+        selectedDocumentIds: starterPayload.documentId,
+      }}
     />
   )
 }
