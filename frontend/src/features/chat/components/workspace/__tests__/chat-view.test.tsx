@@ -182,6 +182,21 @@ describe("ChatView", () => {
     })
   })
 
+  it("스레드 화면에서는 빈 상태여도 웰컴 문구를 보여주지 않는다.", () => {
+    streamState.current = {
+      hitlInterrupts: [],
+      isBusy: false,
+      isHydrating: false,
+      localNotice: null,
+      messages: [],
+      toolCalls: [],
+    }
+
+    renderChatView()
+
+    expect(screen.queryByText("무엇을 도와드릴까요?")).not.toBeInTheDocument()
+  })
+
   it("엔터를 누르면 메시지를 전송한다.", () => {
     streamState.current = {
       hitlInterrupts: [],

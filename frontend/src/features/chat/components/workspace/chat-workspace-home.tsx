@@ -8,9 +8,11 @@ import { HttpStatusError } from "@/features/auth/lib/fetch-with-auth"
 import { ChatWorkspaceEmptyState } from "@/features/chat/components/workspace/chat-workspace-empty-state"
 import { ChatWorkspaceShell } from "@/features/chat/components/workspace/chat-workspace-shell"
 import { useLocalWorkspaceRuntimeSettings } from "@/features/chat/hooks/workspace/use-local-workspace-runtime-settings"
+import { useChatWorkspace } from "@/features/chat/providers/chat-workspace-provider"
 import type { ChatReasoningEffort } from "@/features/chat/types/chat-model-selection"
 import { useListDocumentsApiV1AgentDocumentsGet } from "@/shared/api/generated/agent/endpoints/agent-documents/agent-documents"
 import {
+  getGetThreadSettingsApiV1AgentThreadsThreadIdSettingsGetQueryKey,
   getListThreadsApiV1AgentThreadsGetQueryKey,
   updateThreadSettingsApiV1AgentThreadsThreadIdSettingsPut,
   useCreateThreadApiV1AgentThreadsPost,
@@ -25,6 +27,12 @@ import { Skeleton } from "@/shared/components/ui/skeleton"
 export function ChatWorkspaceHome() {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const selectedArtifactIds = useChatWorkspace(
+    (state) => state.selectedArtifactIds
+  )
+  const selectedDocumentIds = useChatWorkspace(
+    (state) => state.selectedDocumentIds
+  )
   const [draft, setDraft] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const createThread = useCreateThreadApiV1AgentThreadsPost()
@@ -98,14 +106,21 @@ export function ChatWorkspaceHome() {
       })
 
       try {
-        await updateThreadSettingsApiV1AgentThreadsThreadIdSettingsPut(
-          thread.id,
-          {
-            model: runtimeControls.modelSelection.model,
-            reasoning_effort: runtimeControls.modelSelection.reasoningEffort,
-            allowed_tools: runtimeControls.toolPolicy.allowedTools,
-            interrupt_on: runtimeControls.toolPolicy.interruptOn,
-          }
+        const savedSettings =
+          await updateThreadSettingsApiV1AgentThreadsThreadIdSettingsPut(
+            thread.id,
+            {
+              model: runtimeControls.modelSelection.model,
+              reasoning_effort: runtimeControls.modelSelection.reasoningEffort,
+              allowed_tools: runtimeControls.toolPolicy.allowedTools,
+              interrupt_on: runtimeControls.toolPolicy.interruptOn,
+            }
+          )
+        queryClient.setQueryData(
+          getGetThreadSettingsApiV1AgentThreadsThreadIdSettingsGetQueryKey(
+            thread.id
+          ),
+          savedSettings
         )
       } catch (error) {
         toast.error(resolveThreadSettingsError(error))
@@ -114,7 +129,17 @@ export function ChatWorkspaceHome() {
       await queryClient.invalidateQueries({
         queryKey: getListThreadsApiV1AgentThreadsGetQueryKey(),
       })
-      router.push(`/chat/${thread.id}?starter=${encodeURIComponent(message)}`)
+      const nextSearchParams = new URLSearchParams({
+        starter: message,
+      })
+      for (const documentId of selectedDocumentIds) {
+        nextSearchParams.append("documentId", documentId)
+      }
+      for (const artifactId of selectedArtifactIds) {
+        nextSearchParams.append("artifactId", artifactId)
+      }
+
+      router.push(`/chat/${thread.id}?${nextSearchParams.toString()}`)
     } catch (error) {
       toast.error(resolveStartThreadError(error))
       throw error
