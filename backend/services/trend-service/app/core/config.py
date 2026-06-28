@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     auto_ingest_sample_on_empty: bool = False
     # 운영 환경에서는 원천 CSV를 다시 읽지 않고 DB에 저장된 최신 배너 스냅샷을 우선 서빙한다.
     serve_banner_snapshot_from_db: bool = True
-    # DB 스냅샷이 없을 때 API 요청 중 원천 CSV로 즉석 계산할지 여부. 운영에서는 false를 유지한다.
+    # DB 스냅샷이 없을 때 API 요청 중 정제본으로 즉석 계산할지 여부. 운영에서는 false를 유지한다.
     allow_runtime_banner_compute: bool = False
     # 서울 열린데이터 Open API 키(증분 fetch용). 비어 있으면 fetch를 비활성화한다.
     seoul_api_key: str = ""
