@@ -3,10 +3,8 @@ from __future__ import annotations
 import time
 from datetime import UTC, datetime
 
-# 주제별 추론 결과 캐시. 배너는 자주 안 바뀌어도 되므로 일정 시간 재사용한다.
+# 배너 섹션(예측='곧 뜰' + 인기='요즘 뜨는') 캐시. 즉석 계산이 느릴 수 있어 일정 시간 재사용한다.
 _CACHE_TTL_SECONDS = 60 * 60
-_theme_cache: dict[str, object] = {"at": 0.0, "rankings": None}
-# 배너 섹션(예측='곧 뜰' + 인기='요즘 뜨는') 캐시. 학습이 끼어 즉석 계산이 느려 캐시한다.
 _banner_cache: dict[str, object] = {"at": 0.0, "data": None}
 
 
@@ -41,9 +39,9 @@ def build_banner_sections_from_rankings(
 def get_banner_sections(data_mode: str = "db", use_cache: bool = True) -> dict[str, dict[str, list[dict[str, object]]]]:
     """배너용 두 섹션을 함께 만든다.
 
-    - forecast: 학습 완료 LightGBM 모델의 세그먼트별 예측 랭킹.
+    - forecast: forward-slope 모델의 세그먼트별 예측 랭킹.
     - popular: 최근 상업시간대 실측 규모 기준 '지금 인기 상권'(모델 아님, 서술).
-    학습이 끼어 즉석 계산이 느리므로 결과를 일정 시간 캐시한다.
+    즉석 계산이 느릴 수 있어 결과를 일정 시간 캐시한다.
     """
     now = time.time()
     if use_cache and _banner_cache["data"] is not None and now - float(_banner_cache["at"]) < _CACHE_TTL_SECONDS:
@@ -92,37 +90,6 @@ def compute_theme_rankings(data_mode: str) -> dict[str, list[dict[str, object]]]
 
     names = load_hdong_names(data_mode)
     return _attach_names(compute_forecast_rankings(data_mode), names)
-
-
-def refresh_theme_rankings(data_mode: str = "sample") -> dict[str, list[dict[str, object]]]:
-    """주제별 예측을 다시 계산한다. db 모드면 trend_score에 저장한다(배치/최초 채움용)."""
-    rankings = compute_theme_rankings(data_mode)
-    if data_mode == "db":
-        from app.models.commercial_trend.features import latest_source_stat_date
-        from app.trend.repository import save_theme_scores
-
-        save_theme_scores(rankings, datetime.now(UTC), latest_source_stat_date(data_mode))
-    _theme_cache["rankings"] = rankings
-    _theme_cache["at"] = time.time()
-    return rankings
-
-
-def get_theme_rankings(data_mode: str = "sample", use_cache: bool = True) -> dict[str, list[dict[str, object]]]:
-    """주제별 예측 랭킹. db 모드는 배치가 저장한 최신 결과를 읽고, 비적재 모드는 즉석 계산한다."""
-    now = time.time()
-    if use_cache and _theme_cache["rankings"] is not None and now - float(_theme_cache["at"]) < _CACHE_TTL_SECONDS:
-        return _theme_cache["rankings"]  # type: ignore[return-value]
-
-    if data_mode == "db":
-        from app.trend.repository import load_latest_theme_scores
-
-        rankings = load_latest_theme_scores()
-    else:
-        rankings = compute_theme_rankings(data_mode)
-
-    _theme_cache["rankings"] = rankings
-    _theme_cache["at"] = now
-    return rankings
 
 
 def evaluation_payload() -> dict[str, object]:
