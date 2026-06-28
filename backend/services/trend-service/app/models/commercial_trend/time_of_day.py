@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import date
 
 import pandas as pd
 
@@ -86,10 +87,15 @@ def _write_durable(path, dailies: dict[str, pd.DataFrame]) -> None:
         [frame.assign(segment=segment) for segment, frame in dailies.items()], ignore_index=True
     )[["segment", "area_code", "date", "population"]]
     path.parent.mkdir(parents=True, exist_ok=True)
+    # 데이터·메타 모두 고정 이름 .tmp에 쓰고 os.replace로 원자 교체한다.
+    # 고정 이름이라 크래시로 남은 .tmp는 다음 실행이 덮어쓰고, 성공 시 replace가 소진해 누적되지 않는다.
     tmp = path.with_suffix(path.suffix + ".tmp")
     snapshot.to_csv(tmp, index=False, compression="gzip")
-    os.replace(tmp, path)  # 원자적 교체
-    _meta_path(path).write_text(
+    os.replace(tmp, path)
+
+    meta_path = _meta_path(path)
+    meta_tmp = meta_path.with_suffix(meta_path.suffix + ".tmp")
+    meta_tmp.write_text(
         json.dumps(
             {"version": AGGREGATE_VERSION, "latest_date": _latest_date(dailies)},
             ensure_ascii=False,
@@ -97,6 +103,7 @@ def _write_durable(path, dailies: dict[str, pd.DataFrame]) -> None:
         ),
         encoding="utf-8",
     )
+    os.replace(meta_tmp, meta_path)
 
 
 def _read_durable(path) -> dict[str, pd.DataFrame] | None:
@@ -143,8 +150,13 @@ def upsert_from_csv(csv_path) -> dict[str, str | None]:
         new = _aggregate_files([csv_path], hours)
         existing = _read_durable(path)
         merged = _merge(existing, new) if existing else new
+        expected = _latest_date(merged)
         _write_durable(path, merged)
-        result[kind] = _latest_date(merged)
+        # 저장 검증: 원자 교체 뒤 다시 읽어 파싱되고 최신일이 일치할 때만 성공으로 본다.
+        verify = _read_durable(path)
+        if verify is None or _latest_date(verify) != expected:
+            raise RuntimeError(f"정제본 저장 검증 실패: {path.name}")
+        result[kind] = expected
     return result
 
 
@@ -166,3 +178,12 @@ def load_commercial_dailies(data_mode: str = "db") -> dict[str, pd.DataFrame]:
 def load_night_dailies(data_mode: str = "db") -> dict[str, pd.DataFrame]:
     """야간(0~5시) 평균 일별 시계열(세그먼트별). 상권성 비율용. 정제본 read, 없으면 원시에서 시드."""
     return _load(_NIGHT_FILE, NIGHT_HOURS, data_mode)
+
+
+def latest_aggregate_date() -> date | None:
+    """상업 정제본의 최신 기준일. batch의 '새 데이터 있나' 판정과 예측 as_of 메타로 쓴다."""
+    durable = _read_durable(_COMMERCIAL_FILE)
+    if durable is None:
+        return None
+    iso = _latest_date(durable)
+    return date.fromisoformat(iso) if iso else None
