@@ -103,6 +103,9 @@ jobs:
 
           if [ -d "$TARGET_REPO_DIR/.git" ]; then
             git -C "$TARGET_REPO_DIR" remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/market-fit-team/market-fit.git"
+            # 로컬 tracked/untracked 변경이 checkout을 막지 않도록, 보존 대상 백업 후 먼저 작업 트리를 비운다.
+            git -C "$TARGET_REPO_DIR" reset --hard HEAD
+            git -C "$TARGET_REPO_DIR" clean -fd
             git -C "$TARGET_REPO_DIR" fetch --depth 1 origin "$REPO_REF"
             git -C "$TARGET_REPO_DIR" checkout -B "$REPO_REF" FETCH_HEAD
             git -C "$TARGET_REPO_DIR" reset --hard FETCH_HEAD
