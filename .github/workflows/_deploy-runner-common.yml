@@ -1,0 +1,113 @@
+name: Deploy Runner Common
+
+on:
+  workflow_call:
+    inputs:
+      # GitHub Actions 화면과 로그에 표시할 워크플로 식별자다.
+      workflow_label:
+        required: true
+        type: string
+      # self-hosted runner가 clone 또는 fetch할 브랜치명이다.
+      branch:
+        required: true
+        type: string
+      # market / franchise dump를 배포용 clone 디렉터리로 복사할지 결정한다.
+      copy_dumps:
+        required: false
+        type: boolean
+        default: false
+      # 실제 배포 단계에서 실행할 명령이다.
+      deploy_command:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # VPS에 연결된 self-hosted ARM64 runner에서만 실행한다.
+    runs-on: [self-hosted, Linux, ARM64]
+    concurrency:
+      # 같은 서버에 동시에 여러 배포가 겹치지 않도록 직렬화한다.
+      group: market-fit-deploy
+      cancel-in-progress: false
+    env:
+      # 원격 저장소 주소다. 매 실행마다 최신 브랜치를 depth 1로 맞춘다.
+      REPO_URL: https://github.com/market-fit-team/market-fit.git
+      REPO_REF: ${{ inputs.branch }}
+      # 로컬에서 관리 중인 원본 배포 자산 위치다.
+      SOURCE_REPO_DIR: /home/ubuntu/code-server/volumes/home/project/market-fit
+      # 실제 배포를 수행할 별도 clone 작업 디렉터리다.
+      TARGET_REPO_DIR: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy
+      # 원본 deploy/.env 파일을 액션에서 그대로 복사해 사용한다.
+      SOURCE_ENV_FILE: /home/ubuntu/code-server/volumes/home/project/market-fit/deploy/.env
+      # 원본 dump 파일 디렉터리다. dump가 필요한 워크플로에서만 복사한다.
+      SOURCE_DUMP_DIR: /home/ubuntu/code-server/volumes/home/project/market-fit/deploy/.local/backend-db-market-franchise
+      # clone 받은 배포 저장소 안에서 실제로 사용할 env와 dump 경로다.
+      TARGET_ENV_FILE: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy/deploy/.env
+      TARGET_DUMP_DIR: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy/deploy/.local/backend-db-market-franchise
+    steps:
+      # 어떤 워크플로가 어떤 브랜치로 실행되는지 먼저 로그에 남긴다.
+      - name: 배포 시작 정보 출력
+        run: |
+          echo "workflow=${{ inputs.workflow_label }}"
+          echo "branch=${REPO_REF}"
+          echo "target=${TARGET_REPO_DIR}"
+
+      # 배포용 작업 디렉터리를 최신 브랜치 기준으로 depth 1 clone/fetch 상태로 맞춘다.
+      # 기존 로컬 작업 저장소를 직접 건드리지 않고, 별도 clone 디렉터리만 갱신한다.
+      - name: 배포 저장소 최신화
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$TARGET_REPO_DIR"
+
+          if [ -d "$TARGET_REPO_DIR/.git" ]; then
+            git -C "$TARGET_REPO_DIR" remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/market-fit-team/market-fit.git"
+            git -C "$TARGET_REPO_DIR" fetch --depth 1 origin "$REPO_REF"
+            git -C "$TARGET_REPO_DIR" checkout -B "$REPO_REF" FETCH_HEAD
+            git -C "$TARGET_REPO_DIR" reset --hard FETCH_HEAD
+            git -C "$TARGET_REPO_DIR" clean -fd
+          else
+            rm -rf "$TARGET_REPO_DIR"
+            git clone --depth 1 --branch "$REPO_REF" "https://x-access-token:${GH_TOKEN}@github.com/market-fit-team/market-fit.git" "$TARGET_REPO_DIR"
+          fi
+
+          git -C "$TARGET_REPO_DIR" rev-parse HEAD
+
+      # 배포용 비밀값은 GitHub Secret 대신 서버 로컬 deploy/.env를 그대로 재사용한다.
+      - name: 배포용 env 파일 복사
+        run: |
+          set -euo pipefail
+
+          test -f "$SOURCE_ENV_FILE"
+          mkdir -p "$(dirname "$TARGET_ENV_FILE")"
+          cp "$SOURCE_ENV_FILE" "$TARGET_ENV_FILE"
+
+      # dump가 필요한 워크플로만 market.dump, franchise.dump를 clone 디렉터리로 복사한다.
+      - name: 덤프 파일 복사
+        if: ${{ inputs.copy_dumps }}
+        run: |
+          set -euo pipefail
+
+          test -d "$SOURCE_DUMP_DIR"
+          mkdir -p "$TARGET_DUMP_DIR"
+          cp "$SOURCE_DUMP_DIR/market.dump" "$TARGET_DUMP_DIR/market.dump"
+          cp "$SOURCE_DUMP_DIR/franchise.dump" "$TARGET_DUMP_DIR/franchise.dump"
+
+      # 개별 워크플로가 넘긴 make 또는 docker compose 명령을 deploy 디렉터리에서 실행한다.
+      - name: 배포 명령 실행
+        working-directory: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy/deploy
+        run: |
+          set -euo pipefail
+          ${{ inputs.deploy_command }}
+
+      # 마지막으로 현재 compose 상태를 출력해 배포 결과를 빠르게 확인한다.
+      - name: 배포 상태 확인
+        working-directory: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy/deploy
+        run: |
+          set -euo pipefail
+          docker compose --env-file .env -f compose/backend-public-stack.yml ps

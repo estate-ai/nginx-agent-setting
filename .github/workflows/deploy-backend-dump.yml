@@ -1,0 +1,26 @@
+name: deploy-backend-dump
+
+on:
+  # GitHub Actions 화면에서 수동 실행만 허용한다.
+  workflow_dispatch:
+    inputs:
+      # 기본은 main이며, 필요 시 다른 브랜치도 배포할 수 있다.
+      branch:
+        description: 배포할 브랜치명
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-backend-dump:
+    # 서비스 전체 재배포 없이 dump 복원과 온보딩 학습만 따로 다시 돌리는 배포다.
+    uses: ./.github/workflows/_deploy-runner-common.yml
+    with:
+      workflow_label: deploy-backend-dump
+      branch: ${{ inputs.branch }}
+      copy_dumps: true
+      # DB 복원과 모델 학습 타깃만 순서대로 수행한다.
+      deploy_command: make restore-db train-models

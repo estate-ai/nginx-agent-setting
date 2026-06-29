@@ -1,14 +1,16 @@
 SHELL := /bin/bash
 
-.PHONY: gateway data restore-db services train-models up ps logs status down clean
+.PHONY: gateway data restore-db services frontend train-models up up-mac ps logs status down clean
 
 COMPOSE := docker compose --env-file .env -f compose/backend-public-stack.yml
+MAC_COMPOSE := docker compose --env-file .env -f compose/backend-public-stack.yml -f compose/backend-public-stack.mac.yml
 RESTORE_SCRIPT := ./scripts/restore-backend-db-market-franchise.sh
 TRAIN_SCRIPT := ./scripts/train-onboarding-models.sh
 
 GATEWAY_SERVICES := traefik
 DATA_SERVICES := authentik-db backend-db community-db onboarding-db agent-db post-db redis rabbitmq minio minio-init
 APP_SERVICES := authentik-server authentik-worker profile-service echo-service franchise-service market-service onboarding-service agent-service community-service post-service
+FRONTEND_SERVICE := frontend
 
 gateway:
 	@echo "Traefik 공개 게이트웨이를 시작합니다..."
@@ -30,6 +32,10 @@ services:
 	@echo "백엔드 서비스를 빌드하고 시작합니다..."
 	@$(COMPOSE) up -d --build $(APP_SERVICES)
 
+frontend:
+	@echo "프론트엔드 standalone 서비스를 빌드하고 시작합니다..."
+	@$(COMPOSE) up -d --build $(FRONTEND_SERVICE)
+
 train-models:
 	@if [[ "$${SKIP_TRAIN:-0}" == "1" ]]; then \
 		echo "온보딩 모델 학습을 건너뜁니다. SKIP_TRAIN=1"; \
@@ -39,6 +45,13 @@ train-models:
 	fi
 
 up: gateway data restore-db services train-models
+
+up-mac:
+	@echo "Apple Silicon용 mac 오버라이드로 배포 스택을 시작합니다..."
+	@$(MAC_COMPOSE) up -d $(GATEWAY_SERVICES) $(DATA_SERVICES)
+	@$(MAKE) restore-db
+	@$(MAC_COMPOSE) up -d --build $(APP_SERVICES)
+	@$(MAKE) train-models
 
 ps:
 	@$(COMPOSE) ps

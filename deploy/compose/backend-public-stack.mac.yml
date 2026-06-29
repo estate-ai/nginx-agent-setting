@@ -1,0 +1,4 @@
+services:
+  backend-db:
+    # Apple Silicon에서는 PostGIS 이미지를 amd64로 에뮬레이션해 기동한다.
+    platform: linux/amd64

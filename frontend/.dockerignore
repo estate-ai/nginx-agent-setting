@@ -1,0 +1,12 @@
+node_modules
+.next
+coverage
+storybook-static
+playwright-report
+test-results
+*.log
+dev-server.out.log
+dev-server.err.log
+.env
+.env.local
+.env.*.local
