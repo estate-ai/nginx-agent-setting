@@ -16,11 +16,11 @@ permissions:
 
 jobs:
   deploy-frontend:
-    # 프론트 standalone 컨테이너만 별도로 빌드하고 재기동하는 배포다.
+    # 프론트 standalone 컨테이너만 별도로 codegen 후 빌드하고 재기동하는 배포다.
     uses: ./.github/workflows/_deploy-runner-common.yml
     with:
       workflow_label: deploy-frontend
       branch: ${{ inputs.branch }}
       copy_dumps: false
-      # deploy/Makefile의 frontend 타깃을 사용해 frontend 서비스만 올린다.
+      # deploy/Makefile의 frontend 타깃이 api:gen 이후 frontend 서비스만 올린다.
       deploy_command: make frontend
