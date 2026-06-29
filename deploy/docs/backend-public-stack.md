@@ -110,7 +110,7 @@ GET /api/market/api/v1/status
 ## deploy/.env.example
 
 실제 배포 값은 `deploy/.env` 하나에 모은다.
-GitHub Actions 배포 워크플로도 `market-fit-deploy/.env`가 아니라 `market-fit-deploy/deploy/.env`만 보존하고 검증한다.
+GitHub Actions 배포 워크플로도 `market-fit-deploy/.env`가 아니라 `market-fit-deploy/deploy/.env`만 사용하고 검증한다.
 Auth host, API host, frontend origin, frontend Better Auth secret, DB 비밀번호, OAuth secret, LLM key가 여기 들어간다.
 트렌드 서비스 DB 비밀번호와 서울 열린데이터 API 키도 같은 파일에서 관리한다.
 
@@ -303,14 +303,17 @@ backend/services/trend-service/.raw
 `.raw`는 선택 자산이다.
 있으면 trend 배치가 행정동 이름 CSV를 함께 재적재하고, 없어도 기존 DB 이름 매핑을 유지한 채 점수·배너 스냅샷은 갱신한다.
 
-`deploy-backend`, `deploy-backend-init`, `deploy-backend-dump` 워크플로는 self-hosted runner의 배포용 작업 저장소 `market-fit-deploy` 안에 있는 로컬 `backend/services/trend-service/.artifacts`를 그대로 사용한다.
-워크플로는 repo 최신화 전에 `.artifacts`, `.raw`, `deploy/.env`, dump 디렉터리를 임시 보관했다가 `git reset --hard`와 `git clean -fd` 뒤 다시 복원한다.
-`.raw`는 있으면 같이 유지하고, 없어도 빈 디렉터리만 만들어 둔다.
+배포 워크플로는 self-hosted runner의 배포용 작업 저장소 `market-fit-deploy` 안에 있는 ignored 로컬 자산을 그대로 사용한다.
+워크플로는 `git reset --hard`와 `git clean -fd`로 tracked/untracked 작업 트리만 배포 브랜치에 맞춘다.
+`git clean -fd`는 `.gitignore` 대상인 `deploy/.env`, `deploy/.local`, `.raw`, `.artifacts`를 지우지 않는다.
+워크플로는 이 자산을 임시 디렉터리로 복사하거나, 기존 경로를 지운 뒤 다시 복원하지 않는다.
 
 ```text
 /home/ubuntu/code-server/volumes/home/project/market-fit-deploy
 -> deploy/.env
 -> deploy/.local/backend-db-market-franchise
+-> deploy/.local/post-db
+-> backend/services/onboarding-service/.raw
 -> backend/services/trend-service/.artifacts
 -> backend/services/trend-service/.raw
 ```

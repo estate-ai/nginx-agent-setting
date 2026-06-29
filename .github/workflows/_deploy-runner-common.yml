@@ -11,12 +11,12 @@ on:
       branch:
         required: true
         type: string
-      # market / franchise dump를 배포용 clone 디렉터리로 복사할지 결정한다.
+      # market / franchise dump가 배포용 clone 디렉터리에 있는지 확인할지 결정한다.
       copy_dumps:
         required: false
         type: boolean
         default: false
-      # trend-service .artifacts / .raw를 배포용 clone 디렉터리로 복사할지 결정한다.
+      # trend-service .artifacts / .raw가 배포용 clone 디렉터리에 있는지 확인할지 결정한다.
       copy_trend_assets:
         required: false
         type: boolean
@@ -43,7 +43,7 @@ jobs:
       REPO_REF: ${{ inputs.branch }}
       # 실제 배포를 수행할 별도 clone 작업 디렉터리다.
       TARGET_REPO_DIR: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy
-      # 배포에 필요한 로컬 env / dump / trend 자산은 모두 배포용 clone 디렉터리 안에 둔다.
+      # 배포에 필요한 ignored 로컬 자산은 배포용 clone 디렉터리 안에 두고 Git 갱신이 건드리지 않는다.
       TARGET_ENV_FILE: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy/deploy/.env
       TARGET_DUMP_DIR: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy/deploy/.local/backend-db-market-franchise
       TARGET_POST_DUMP_DIR: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy/deploy/.local/post-db
@@ -66,67 +66,22 @@ jobs:
         run: |
           set -euo pipefail
 
-          preserve_dir="$(mktemp -d)"
-          restore_preserved_path() {
-            local saved_relative_path="$1"
-            local target_path="$2"
-            if [ -e "$preserve_dir/$saved_relative_path" ]; then
-              mkdir -p "$(dirname "$target_path")"
-              rm -rf "$target_path"
-              cp -R "$preserve_dir/$saved_relative_path" "$target_path"
-            fi
-          }
-
-          if [ -d "$TARGET_REPO_DIR" ]; then
-            if [ -f "$TARGET_ENV_FILE" ]; then
-              mkdir -p "$preserve_dir/deploy"
-              cp "$TARGET_ENV_FILE" "$preserve_dir/deploy/.env"
-            fi
-            if [ -d "$TARGET_DUMP_DIR" ]; then
-              mkdir -p "$preserve_dir/deploy/.local"
-              cp -R "$TARGET_DUMP_DIR" "$preserve_dir/deploy/.local/backend-db-market-franchise"
-            fi
-            if [ -d "$TARGET_POST_DUMP_DIR" ]; then
-              mkdir -p "$preserve_dir/deploy/.local"
-              cp -R "$TARGET_POST_DUMP_DIR" "$preserve_dir/deploy/.local/post-db"
-            fi
-            if [ -d "$TARGET_ONBOARDING_RAW_DIR" ]; then
-              mkdir -p "$preserve_dir/backend/services/onboarding-service"
-              cp -R "$TARGET_ONBOARDING_RAW_DIR" "$preserve_dir/backend/services/onboarding-service/.raw"
-            fi
-            if [ -d "$TARGET_TREND_ARTIFACTS_DIR" ]; then
-              mkdir -p "$preserve_dir/backend/services/trend-service"
-              cp -R "$TARGET_TREND_ARTIFACTS_DIR" "$preserve_dir/backend/services/trend-service/.artifacts"
-            fi
-            if [ -d "$TARGET_TREND_RAW_DIR" ]; then
-              mkdir -p "$preserve_dir/backend/services/trend-service"
-              cp -R "$TARGET_TREND_RAW_DIR" "$preserve_dir/backend/services/trend-service/.raw"
-            fi
-          fi
-
-          mkdir -p "$TARGET_REPO_DIR"
-
           if [ -d "$TARGET_REPO_DIR/.git" ]; then
             git -C "$TARGET_REPO_DIR" remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/market-fit-team/market-fit.git"
-            # 로컬 tracked/untracked 변경이 checkout을 막지 않도록, 보존 대상 백업 후 먼저 작업 트리를 비운다.
+            # ignored 운영 자산은 그대로 두고 tracked/untracked 작업 트리만 배포 브랜치에 맞춘다.
             git -C "$TARGET_REPO_DIR" reset --hard HEAD
             git -C "$TARGET_REPO_DIR" clean -fd
             git -C "$TARGET_REPO_DIR" fetch --depth 1 origin "$REPO_REF"
             git -C "$TARGET_REPO_DIR" checkout -B "$REPO_REF" FETCH_HEAD
             git -C "$TARGET_REPO_DIR" reset --hard FETCH_HEAD
             git -C "$TARGET_REPO_DIR" clean -fd
+          elif [ -e "$TARGET_REPO_DIR" ]; then
+            echo "::error::배포 대상 경로가 Git 저장소가 아닙니다: $TARGET_REPO_DIR"
+            echo "::error::운영 자산 보호를 위해 자동 삭제나 재클론을 수행하지 않습니다."
+            exit 1
           else
-            rm -rf "$TARGET_REPO_DIR"
             git clone --depth 1 --branch "$REPO_REF" "https://x-access-token:${GH_TOKEN}@github.com/market-fit-team/market-fit.git" "$TARGET_REPO_DIR"
           fi
-
-          restore_preserved_path "deploy/.env" "$TARGET_ENV_FILE"
-          restore_preserved_path "deploy/.local/backend-db-market-franchise" "$TARGET_DUMP_DIR"
-          restore_preserved_path "deploy/.local/post-db" "$TARGET_POST_DUMP_DIR"
-          restore_preserved_path "backend/services/onboarding-service/.raw" "$TARGET_ONBOARDING_RAW_DIR"
-          restore_preserved_path "backend/services/trend-service/.artifacts" "$TARGET_TREND_ARTIFACTS_DIR"
-          restore_preserved_path "backend/services/trend-service/.raw" "$TARGET_TREND_RAW_DIR"
-          rm -rf "$preserve_dir"
 
           git -C "$TARGET_REPO_DIR" rev-parse HEAD
 
