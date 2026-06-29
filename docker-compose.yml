@@ -134,6 +134,7 @@ services:
       JWT_ALGS: "RS256"
       AUTHENTIK_API_URL: "http://authentik-server:9000/api/v3"
       AUTHENTIK_SERVICE_ROLE_KEY: "${AUTHENTIK_SERVICE_ROLE_KEY:?AUTHENTIK_SERVICE_ROLE_KEY를 .env에 설정하세요}"
+      
     expose:
       - "3001"
     depends_on:
@@ -463,6 +464,7 @@ services:
   post-service:
     build: ./backend/services/post-service
     container_name: post-service
+    restart: unless-stopped
     depends_on:
       post-db:
         condition: service_healthy
@@ -504,3 +506,4 @@ volumes:
   post_postgres_data:
   redis_data:
   minio_data:
+
