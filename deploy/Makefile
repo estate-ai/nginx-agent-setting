@@ -5,6 +5,7 @@ SHELL := /bin/bash
 COMPOSE := docker compose --env-file .env -f compose/backend-public-stack.yml
 MAC_COMPOSE := docker compose --env-file .env -f compose/backend-public-stack.yml -f compose/backend-public-stack.mac.yml
 RESTORE_SCRIPT := ./scripts/restore-backend-db-market-franchise.sh
+POST_RESTORE_SCRIPT := ./scripts/restore-post-db.sh
 ONBOARDING_TRAIN_SCRIPT := ./scripts/train-onboarding-models.sh
 TREND_TRAIN_SCRIPT := ./scripts/train-trend-models.sh
 FRONTEND_API_GEN_SCRIPT := ./scripts/generate-frontend-api-clients.sh
@@ -20,7 +21,7 @@ gateway:
 
 data:
 	@echo "배포용 데이터 저장소를 시작합니다..."
-	@$(COMPOSE) up -d $(DATA_SERVICES)
+	@$(COMPOSE) up -d --build $(DATA_SERVICES)
 
 restore-db:
 	@if [[ "$${SKIP_RESTORE:-0}" == "1" ]]; then \
@@ -28,6 +29,8 @@ restore-db:
 	else \
 		echo "market / franchise 덤프를 backend-db에 복원합니다..."; \
 		$(RESTORE_SCRIPT); \
+		echo "post-service 덤프를 post-db에 복원합니다..."; \
+		$(POST_RESTORE_SCRIPT); \
 	fi
 
 services:
@@ -64,9 +67,9 @@ up: gateway data restore-db services train-models
 
 up-mac:
 	@echo "Apple Silicon용 mac 오버라이드로 배포 스택을 시작합니다..."
-	@$(MAC_COMPOSE) up -d $(GATEWAY_SERVICES) $(DATA_SERVICES)
+	@$(MAC_COMPOSE) up -d --build $(GATEWAY_SERVICES) $(DATA_SERVICES)
 	@# mac 오버라이드와 dump 오버라이드를 함께 넘겨 backend-db 구성을 맞춘다.
-	@STACK_EXTRA_FILES="$(CURDIR)/compose/backend-public-stack.mac.yml $(CURDIR)/compose/backend-db-market-franchise.dump.yml" $(MAKE) restore-db
+	@STACK_EXTRA_FILES="$(CURDIR)/compose/backend-public-stack.mac.yml $(CURDIR)/compose/backend-db-market-franchise.dump.yml $(CURDIR)/compose/post-db.dump.yml" $(MAKE) restore-db
 	@$(MAC_COMPOSE) up -d --build $(APP_SERVICES)
 	@$(MAKE) train-models
 

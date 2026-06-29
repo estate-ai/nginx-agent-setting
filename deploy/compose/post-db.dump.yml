@@ -1,0 +1,5 @@
+services:
+  post-db:
+    # post-service 덤프는 restore 시점에만 별도 오버라이드로 마운트한다.
+    volumes:
+      - ../.local/post-db/post.dump:/dump/post.dump:ro

@@ -46,6 +46,7 @@ jobs:
       # 배포에 필요한 로컬 env / dump / trend 자산은 모두 배포용 clone 디렉터리 안에 둔다.
       TARGET_ENV_FILE: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy/deploy/.env
       TARGET_DUMP_DIR: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy/deploy/.local/backend-db-market-franchise
+      TARGET_POST_DUMP_DIR: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy/deploy/.local/post-db
       TARGET_TREND_ARTIFACTS_DIR: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy/backend/services/trend-service/.artifacts
       TARGET_TREND_RAW_DIR: /home/ubuntu/code-server/volumes/home/project/market-fit-deploy/backend/services/trend-service/.raw
     steps:
@@ -84,6 +85,10 @@ jobs:
               mkdir -p "$preserve_dir/deploy/.local"
               cp -R "$TARGET_DUMP_DIR" "$preserve_dir/deploy/.local/backend-db-market-franchise"
             fi
+            if [ -d "$TARGET_POST_DUMP_DIR" ]; then
+              mkdir -p "$preserve_dir/deploy/.local"
+              cp -R "$TARGET_POST_DUMP_DIR" "$preserve_dir/deploy/.local/post-db"
+            fi
             if [ -d "$TARGET_TREND_ARTIFACTS_DIR" ]; then
               mkdir -p "$preserve_dir/backend/services/trend-service"
               cp -R "$TARGET_TREND_ARTIFACTS_DIR" "$preserve_dir/backend/services/trend-service/.artifacts"
@@ -109,6 +114,7 @@ jobs:
 
           restore_preserved_path "deploy/.env" "$TARGET_ENV_FILE"
           restore_preserved_path "deploy/.local/backend-db-market-franchise" "$TARGET_DUMP_DIR"
+          restore_preserved_path "deploy/.local/post-db" "$TARGET_POST_DUMP_DIR"
           restore_preserved_path "backend/services/trend-service/.artifacts" "$TARGET_TREND_ARTIFACTS_DIR"
           restore_preserved_path "backend/services/trend-service/.raw" "$TARGET_TREND_RAW_DIR"
           rm -rf "$preserve_dir"
@@ -130,6 +136,7 @@ jobs:
 
           test -f "$TARGET_DUMP_DIR/market.dump"
           test -f "$TARGET_DUMP_DIR/franchise.dump"
+          test -f "$TARGET_POST_DUMP_DIR/post.dump"
 
       # trend-service가 읽는 운영 아티팩트와 선택 raw CSV는 배포 clone 디렉터리 로컬 자산을 그대로 사용한다.
       - name: trend 자산 확인

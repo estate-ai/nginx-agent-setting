@@ -21,9 +21,22 @@ if [[ -f "$STACK_FILE_PATH" ]]; then
   STACK_FILE_PATH="$(cd "$(dirname "$STACK_FILE_PATH")" && pwd)/$(basename "$STACK_FILE_PATH")"
 fi
 
+append_stack_extra_file_if_missing() {
+  local extra_file="$1"
+  if [[ -z "$STACK_EXTRA_FILES" ]]; then
+    STACK_EXTRA_FILES="$extra_file"
+    return 0
+  fi
+
+  case " $STACK_EXTRA_FILES " in
+    *" $extra_file "*) ;;
+    *) STACK_EXTRA_FILES="$STACK_EXTRA_FILES $extra_file" ;;
+  esac
+}
+
 # 기본 공개 배포 스택에서는 restore 시점에만 dump 마운트 오버라이드를 덧붙인다.
-if [[ -z "$STACK_EXTRA_FILES" && "$STACK_FILE_PATH" == "$ROOT_DIR/compose/backend-public-stack.yml" ]]; then
-  STACK_EXTRA_FILES="$ROOT_DIR/compose/backend-db-market-franchise.dump.yml"
+if [[ "$STACK_FILE_PATH" == "$ROOT_DIR/compose/backend-public-stack.yml" ]]; then
+  append_stack_extra_file_if_missing "$ROOT_DIR/compose/backend-db-market-franchise.dump.yml"
 fi
 
 POSTGRES_SUPERUSER_PASSWORD="${BACKEND_DB_POSTGRES_PASSWORD:-${POSTGRES_PASSWORD:-}}"
@@ -55,7 +68,7 @@ fi
 
 ensure_db_service() {
   echo ">> 0) backend-db를 restore 구성으로 시작"
-  "${COMPOSE[@]}" up -d "$DB_SERVICE"
+  "${COMPOSE[@]}" up -d --build "$DB_SERVICE"
 }
 
 wait_for_db() {

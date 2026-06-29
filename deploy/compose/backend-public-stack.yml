@@ -130,7 +130,10 @@ services:
         condition: service_healthy
 
   backend-db:
-    image: postgis/postgis:17-3.5-alpine
+    build:
+      context: ../postgres
+      dockerfile: Dockerfile.postgis
+    image: market-fit-backend-postgis:17-3.5-arm64
     restart: unless-stopped
     environment:
       POSTGRES_DB: postgres
