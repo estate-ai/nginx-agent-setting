@@ -1,9 +1,10 @@
 SHELL := /bin/bash
 
-.PHONY: validate-env reset gateway data restore-db services frontend-codegen frontend train-onboarding-models train-trend-models train-models up up-mac ps logs status down clean
+.PHONY: validate-env reset reset-hard gateway data restore-db services frontend-codegen frontend train-onboarding-models train-trend-models train-models up up-mac ps logs status down clean
 
 COMPOSE := docker compose --env-file .env -f compose/backend-public-stack.yml
 MAC_COMPOSE := docker compose --env-file .env -f compose/backend-public-stack.yml -f compose/backend-public-stack.mac.yml
+NO_CACHE ?= 0
 VALIDATE_DEPLOY_ENV_SCRIPT := ./scripts/validate-deploy-env.sh
 SYNC_POSTGRES_PASSWORDS_SCRIPT := ./scripts/sync-postgres-passwords.sh
 RESTORE_SCRIPT := ./scripts/restore-backend-db-market-franchise.sh
@@ -17,13 +18,18 @@ GATEWAY_SERVICES := traefik
 DATA_SERVICES := authentik-db backend-db community-db onboarding-db agent-db post-db trend-db redis rabbitmq minio minio-init
 APP_SERVICES := authentik-server authentik-worker profile-service echo-service franchise-service market-service onboarding-service agent-service community-service post-service trend-service
 FRONTEND_SERVICE := frontend
+BUILD_DATA_SERVICES := backend-db
+BUILD_APP_SERVICES := profile-service echo-service franchise-service market-service onboarding-service agent-service community-service post-service trend-service
 
 validate-env:
 	@bash $(VALIDATE_DEPLOY_ENV_SCRIPT) .env
 
 reset: validate-env
-	@echo "배포 스택 컨테이너, 볼륨, 로컬 이미지, Docker build cache를 초기화합니다..."
+	@echo "배포 스택 컨테이너, compose 볼륨, 로컬 compose 이미지를 초기화합니다..."
 	@$(COMPOSE) down --remove-orphans -v --rmi local
+
+reset-hard: reset
+	@echo "VPS 전체 Docker BuildKit build cache와 dangling image를 정리합니다..."
 	@docker builder prune -af
 	@docker image prune -f
 
@@ -33,7 +39,13 @@ gateway: validate-env
 
 data: validate-env
 	@echo "배포용 데이터 저장소를 시작합니다..."
-	@$(COMPOSE) up -d --build $(DATA_SERVICES)
+	@if [[ "$(NO_CACHE)" == "1" ]]; then \
+		echo "Docker build cache를 사용하지 않고 data build 대상을 빌드합니다..."; \
+		$(COMPOSE) build --no-cache $(BUILD_DATA_SERVICES); \
+		$(COMPOSE) up -d $(DATA_SERVICES); \
+	else \
+		$(COMPOSE) up -d --build $(DATA_SERVICES); \
+	fi
 	@bash $(SYNC_POSTGRES_PASSWORDS_SCRIPT)
 
 restore-db: validate-env
@@ -48,7 +60,13 @@ restore-db: validate-env
 
 services: validate-env
 	@echo "백엔드 서비스를 빌드하고 시작합니다..."
-	@$(COMPOSE) up -d --build $(APP_SERVICES)
+	@if [[ "$(NO_CACHE)" == "1" ]]; then \
+		echo "Docker build cache를 사용하지 않고 backend service build 대상을 빌드합니다..."; \
+		$(COMPOSE) build --no-cache $(BUILD_APP_SERVICES); \
+		$(COMPOSE) up -d $(APP_SERVICES); \
+	else \
+		$(COMPOSE) up -d --build $(APP_SERVICES); \
+	fi
 	@bash $(AUTHENTIK_BLUEPRINT_REFRESH_SCRIPT)
 
 # frontend 빌드 전에 현재 backend OpenAPI 기준으로 Orval 산출물을 다시 만든다.
@@ -58,7 +76,13 @@ frontend-codegen: validate-env
 
 frontend: frontend-codegen
 	@echo "프론트엔드 standalone 서비스를 빌드하고 시작합니다..."
-	@$(COMPOSE) up -d --build $(FRONTEND_SERVICE)
+	@if [[ "$(NO_CACHE)" == "1" ]]; then \
+		echo "Docker build cache를 사용하지 않고 frontend를 빌드합니다..."; \
+		$(COMPOSE) build --no-cache $(FRONTEND_SERVICE); \
+		$(COMPOSE) up -d $(FRONTEND_SERVICE); \
+	else \
+		$(COMPOSE) up -d --build $(FRONTEND_SERVICE); \
+	fi
 
 train-onboarding-models: validate-env
 	@echo "온보딩 모델 학습을 실행합니다..."
