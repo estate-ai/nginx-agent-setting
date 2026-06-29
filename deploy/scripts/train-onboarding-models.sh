@@ -13,12 +13,16 @@ if [[ -f "$COMPOSE_ENV_FILE" ]]; then
   set +a
 fi
 
+ONBOARDING_DB_SERVICE_NAME="${ONBOARDING_DB_SERVICE_NAME:-onboarding-db}"
 ONBOARDING_SERVICE_NAME="${ONBOARDING_SERVICE_NAME:-onboarding-service}"
 TWO_TOWER_EPOCHS="${ONBOARDING_TWO_TOWER_EPOCHS:-20}"
 CATEGORY_TOWER_EPOCHS="${ONBOARDING_CATEGORY_TOWER_EPOCHS:-24}"
 CATEGORY_DATA_MODE="${ONBOARDING_CATEGORY_DATA_MODE:-sample}"
 
 COMPOSE=(docker compose --env-file "$COMPOSE_ENV_FILE" -f "$STACK_FILE")
+
+echo ">> onboarding-db / onboarding-service 기동"
+"${COMPOSE[@]}" up -d --build "$ONBOARDING_DB_SERVICE_NAME" "$ONBOARDING_SERVICE_NAME"
 
 echo ">> onboarding_two_tower 학습 시작 (epochs=${TWO_TOWER_EPOCHS})"
 "${COMPOSE[@]}" exec -T "$ONBOARDING_SERVICE_NAME" \

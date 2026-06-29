@@ -61,7 +61,7 @@ services:
     volumes:
       - authentik_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U authentik -d authentik"]
+      test: ["CMD-SHELL", "psql -U authentik -d authentik -tAc 'SELECT 1' >/dev/null"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -160,7 +160,7 @@ services:
       - backend_postgres_data:/var/lib/postgresql/data
       - ../postgres/init-service-databases.sh:/docker-entrypoint-initdb.d/20-init-service-databases.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      test: ["CMD-SHELL", "psql -U postgres -d postgres -tAc 'SELECT 1' >/dev/null"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -175,7 +175,7 @@ services:
     volumes:
       - community_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${COMMUNITY_DB_USER:-demo} -d ${COMMUNITY_DB_NAME:-demo}"]
+      test: ["CMD-SHELL", "psql -U ${COMMUNITY_DB_USER:-demo} -d ${COMMUNITY_DB_NAME:-demo} -tAc 'SELECT 1' >/dev/null"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -190,7 +190,7 @@ services:
     volumes:
       - onboarding_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${ONBOARDING_DB_USER:-onboarding} -d ${ONBOARDING_DB_NAME:-onboarding}"]
+      test: ["CMD-SHELL", "psql -U ${ONBOARDING_DB_USER:-onboarding} -d ${ONBOARDING_DB_NAME:-onboarding} -tAc 'SELECT 1' >/dev/null"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -205,7 +205,7 @@ services:
     volumes:
       - agent_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${AGENT_DB_USER:-agent} -d ${AGENT_DB_NAME:-agent}"]
+      test: ["CMD-SHELL", "psql -U ${AGENT_DB_USER:-agent} -d ${AGENT_DB_NAME:-agent} -tAc 'SELECT 1' >/dev/null"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -220,7 +220,7 @@ services:
     volumes:
       - post_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POST_DB_USER:-post} -d ${POST_DB_NAME:-post}"]
+      test: ["CMD-SHELL", "psql -U ${POST_DB_USER:-post} -d ${POST_DB_NAME:-post} -tAc 'SELECT 1' >/dev/null"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -235,7 +235,7 @@ services:
     volumes:
       - trend_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${TREND_DB_USER:-trend} -d ${TREND_DB_NAME:-trend}"]
+      test: ["CMD-SHELL", "psql -U ${TREND_DB_USER:-trend} -d ${TREND_DB_NAME:-trend} -tAc 'SELECT 1' >/dev/null"]
       interval: 3s
       timeout: 3s
       retries: 20

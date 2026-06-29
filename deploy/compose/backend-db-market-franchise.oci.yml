@@ -16,7 +16,7 @@ services:
       - ../.local/backend-db-market-franchise/market.dump:/dump/market.dump:ro
       - ../.local/backend-db-market-franchise/franchise.dump:/dump/franchise.dump:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "psql -U postgres -d postgres -tAc 'SELECT 1' >/dev/null"]
       interval: 5s
       timeout: 3s
       retries: 20

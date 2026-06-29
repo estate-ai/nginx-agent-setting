@@ -73,7 +73,7 @@ wait_for_db() {
   echo ">> post 1) post-db 준비 대기"
   while (( attempt <= max_attempts )); do
     if "${COMPOSE[@]}" exec -T -e PGPASSWORD="$POST_DB_PASSWORD" "$DB_SERVICE" \
-      pg_isready -U "$POST_DB_USER" -d "$POST_DB_NAME" >/dev/null 2>&1; then
+      psql -U "$POST_DB_USER" -d "$POST_DB_NAME" -v ON_ERROR_STOP=1 -tAc "SELECT 1" >/dev/null 2>&1; then
       echo "post-db가 준비되었습니다."
       return 0
     fi
@@ -88,22 +88,54 @@ wait_for_db() {
 }
 
 run_psql() {
-  "${COMPOSE[@]}" exec -T -e PGPASSWORD="$POST_DB_PASSWORD" "$DB_SERVICE" \
-    psql -U "$POST_DB_USER" -v ON_ERROR_STOP=1 "$@"
+  local max_attempts="${DB_READY_MAX_ATTEMPTS:-30}"
+  local sleep_seconds="${DB_READY_SLEEP_SECONDS:-2}"
+  local attempt=1
+  local sql
+  sql="$(cat)"
+
+  while (( attempt <= max_attempts )); do
+    if printf '%s\n' "$sql" | "${COMPOSE[@]}" exec -T -e PGPASSWORD="$POST_DB_PASSWORD" "$DB_SERVICE" \
+      psql -U "$POST_DB_USER" -v ON_ERROR_STOP=1 "$@"; then
+      return 0
+    fi
+
+    echo "post psql 재시도 중... (${attempt}/${max_attempts})"
+    sleep "$sleep_seconds"
+    ((attempt++))
+  done
+
+  echo "post psql 실행에 실패했습니다. docker compose logs $DB_SERVICE 로 상태를 확인해 주세요." >&2
+  return 1
 }
 
 run_restore() {
-  "${COMPOSE[@]}" exec -T -e PGPASSWORD="$POST_DB_PASSWORD" "$DB_SERVICE" \
-    pg_restore -U "$POST_DB_USER" --clean --if-exists --no-owner --no-privileges "$@"
+  local max_attempts="${DB_READY_MAX_ATTEMPTS:-30}"
+  local sleep_seconds="${DB_READY_SLEEP_SECONDS:-2}"
+  local attempt=1
+
+  while (( attempt <= max_attempts )); do
+    if "${COMPOSE[@]}" exec -T -e PGPASSWORD="$POST_DB_PASSWORD" "$DB_SERVICE" \
+      pg_restore -U "$POST_DB_USER" --clean --if-exists --no-owner --no-privileges "$@"; then
+      return 0
+    fi
+
+    echo "post pg_restore 재시도 중... (${attempt}/${max_attempts})"
+    sleep "$sleep_seconds"
+    ((attempt++))
+  done
+
+  echo "post pg_restore 실행에 실패했습니다. docker compose logs $DB_SERVICE 로 상태를 확인해 주세요." >&2
+  return 1
 }
 
 ensure_db_service
 wait_for_db
 
 echo ">> post 2) post DB 생성 확인"
-run_psql -d postgres <<SQL
-SELECT 'CREATE DATABASE $POST_DB_NAME OWNER $POST_DB_USER'
-WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '$POST_DB_NAME')\gexec
+run_psql -d postgres -v post_db_name="$POST_DB_NAME" -v post_db_user="$POST_DB_USER" <<'SQL'
+SELECT format('CREATE DATABASE %I OWNER %I', :'post_db_name', :'post_db_user')
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'post_db_name')\gexec
 SQL
 
 echo ">> post 3) 복원"

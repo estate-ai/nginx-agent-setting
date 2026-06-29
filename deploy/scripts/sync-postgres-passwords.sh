@@ -26,7 +26,7 @@ wait_for_postgres() {
 
   while ((attempt <= max_attempts)); do
     if "${COMPOSE[@]}" exec -T "$service_name" \
-      pg_isready -U "$user_name" -d "$db_name" >/dev/null 2>&1; then
+      psql -U "$user_name" -d "$db_name" -v ON_ERROR_STOP=1 -tAc "SELECT 1" >/dev/null 2>&1; then
       return 0
     fi
 
@@ -39,6 +39,34 @@ wait_for_postgres() {
   return 1
 }
 
+run_psql_with_retry() {
+  local service_name="$1"
+  local connect_user="$2"
+  local connect_db="$3"
+  local description="$4"
+  shift 4
+
+  local max_attempts="${DB_READY_MAX_ATTEMPTS:-30}"
+  local sleep_seconds="${DB_READY_SLEEP_SECONDS:-2}"
+  local attempt=1
+  local sql
+  sql="$(cat)"
+
+  while ((attempt <= max_attempts)); do
+    if printf '%s\n' "$sql" | "${COMPOSE[@]}" exec -T "$service_name" \
+      psql -U "$connect_user" -d "$connect_db" -v ON_ERROR_STOP=1 "$@"; then
+      return 0
+    fi
+
+    echo ">> retrying $description... (${attempt}/${max_attempts})"
+    sleep "$sleep_seconds"
+    ((attempt++))
+  done
+
+  echo "$description failed" >&2
+  return 1
+}
+
 alter_required_role_password() {
   local service_name="$1"
   local connect_user="$2"
@@ -48,8 +76,7 @@ alter_required_role_password() {
 
   wait_for_postgres "$service_name" "$connect_user" "$connect_db"
   echo ">> syncing password for $service_name role '$role_name'"
-  "${COMPOSE[@]}" exec -T "$service_name" \
-    psql -U "$connect_user" -d "$connect_db" -v ON_ERROR_STOP=1 \
+  run_psql_with_retry "$service_name" "$connect_user" "$connect_db" "$service_name role '$role_name' password sync" \
     -v role_name="$role_name" -v role_password="$role_password" <<'SQL'
 ALTER ROLE :"role_name" WITH LOGIN PASSWORD :'role_password';
 SQL
@@ -64,8 +91,7 @@ alter_existing_role_password() {
 
   wait_for_postgres "$service_name" "$connect_user" "$connect_db"
   echo ">> syncing password for $service_name role '$role_name' if it exists"
-  "${COMPOSE[@]}" exec -T "$service_name" \
-    psql -U "$connect_user" -d "$connect_db" -v ON_ERROR_STOP=1 \
+  run_psql_with_retry "$service_name" "$connect_user" "$connect_db" "$service_name role '$role_name' password sync" \
     -v role_name="$role_name" -v role_password="$role_password" <<'SQL'
 SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :'role_name', :'role_password')
 WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'role_name')\gexec

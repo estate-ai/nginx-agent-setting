@@ -32,7 +32,7 @@ reset-backend: validate-env
 	@$(COMPOSE) rm -sfv $(BACKEND_RESET_SERVICES)
 	@for volume in $(BACKEND_RESET_VOLUMES); do \
 		docker volume rm -f "$$volume" >/dev/null 2>&1 || true; \
-		done
+	done
 	@for image in $(BACKEND_RESET_IMAGES); do \
 		docker image rm -f "$$image" >/dev/null 2>&1 || true; \
 	done

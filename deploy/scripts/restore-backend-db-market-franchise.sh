@@ -79,7 +79,7 @@ wait_for_db() {
   echo ">> 1) backend-db 준비 대기"
   while (( attempt <= max_attempts )); do
     if "${COMPOSE[@]}" exec -T -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "$DB_SERVICE" \
-      pg_isready -U postgres -d postgres >/dev/null 2>&1; then
+      psql -U postgres -d postgres -v ON_ERROR_STOP=1 -tAc "SELECT 1" >/dev/null 2>&1; then
       echo "backend-db가 준비되었습니다."
       return 0
     fi
@@ -94,34 +94,60 @@ wait_for_db() {
 }
 
 run_psql() {
-  "${COMPOSE[@]}" exec -T -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "$DB_SERVICE" \
-    psql -U postgres -v ON_ERROR_STOP=1 "$@"
+  local max_attempts="${DB_READY_MAX_ATTEMPTS:-30}"
+  local sleep_seconds="${DB_READY_SLEEP_SECONDS:-2}"
+  local attempt=1
+  local sql
+  sql="$(cat)"
+
+  while (( attempt <= max_attempts )); do
+    if printf '%s\n' "$sql" | "${COMPOSE[@]}" exec -T -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "$DB_SERVICE" \
+      psql -U postgres -v ON_ERROR_STOP=1 "$@"; then
+      return 0
+    fi
+
+    echo "psql 재시도 중... (${attempt}/${max_attempts})"
+    sleep "$sleep_seconds"
+    ((attempt++))
+  done
+
+  echo "psql 실행에 실패했습니다. docker compose logs $DB_SERVICE 로 상태를 확인해 주세요." >&2
+  return 1
 }
 
 run_restore() {
-  "${COMPOSE[@]}" exec -T -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "$DB_SERVICE" \
-    pg_restore -U postgres --clean --if-exists --no-privileges "$@"
+  local max_attempts="${DB_READY_MAX_ATTEMPTS:-30}"
+  local sleep_seconds="${DB_READY_SLEEP_SECONDS:-2}"
+  local attempt=1
+
+  while (( attempt <= max_attempts )); do
+    if "${COMPOSE[@]}" exec -T -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "$DB_SERVICE" \
+      pg_restore -U postgres --clean --if-exists --no-privileges "$@"; then
+      return 0
+    fi
+
+    echo "pg_restore 재시도 중... (${attempt}/${max_attempts})"
+    sleep "$sleep_seconds"
+    ((attempt++))
+  done
+
+  echo "pg_restore 실행에 실패했습니다. docker compose logs $DB_SERVICE 로 상태를 확인해 주세요." >&2
+  return 1
 }
 
 ensure_db_service
 wait_for_db
 
 echo ">> 2) 롤 생성"
-run_psql <<SQL
-DO \$\$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'market') THEN
-    CREATE ROLE market LOGIN PASSWORD '${MARKET_DB_PASSWORD}';
-  ELSE
-    ALTER ROLE market WITH LOGIN PASSWORD '${MARKET_DB_PASSWORD}';
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'franchise') THEN
-    CREATE ROLE franchise LOGIN PASSWORD '${FRANCHISE_DB_PASSWORD}';
-  ELSE
-    ALTER ROLE franchise WITH LOGIN PASSWORD '${FRANCHISE_DB_PASSWORD}';
-  END IF;
-END
-\$\$;
+run_psql -v market_password="$MARKET_DB_PASSWORD" -v franchise_password="$FRANCHISE_DB_PASSWORD" <<'SQL'
+SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', 'market', :'market_password')
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'market')\gexec
+SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', 'market', :'market_password')
+WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'market')\gexec
+SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', 'franchise', :'franchise_password')
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'franchise')\gexec
+SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', 'franchise', :'franchise_password')
+WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'franchise')\gexec
 SQL
 
 echo ">> 3) 빈 DB 생성"
