@@ -109,9 +109,15 @@ GET /api/market/api/v1/status
 
 ## deploy/.env.example
 
-실제 배포 값은 `deploy/.env` 하나에 모은다.  
+실제 배포 값은 `deploy/.env` 하나에 모은다.
+GitHub Actions 배포 워크플로도 `market-fit-deploy/.env`가 아니라 `market-fit-deploy/deploy/.env`만 보존하고 검증한다.
 Auth host, API host, frontend origin, frontend Better Auth secret, DB 비밀번호, OAuth secret, LLM key가 여기 들어간다.
 트렌드 서비스 DB 비밀번호와 서울 열린데이터 API 키도 같은 파일에서 관리한다.
+
+`CHANGE_ME`, `change_me`, `change-me` 같은 placeholder가 남아 있으면 `deploy/scripts/validate-deploy-env.sh`가 배포와 authentik blueprint refresh를 중단한다.
+이 가드는 `AUTHENTIK_CLIENT_SECRET` placeholder가 authentik DB provider secret을 다시 덮어써서 SQL 수동 수정이 무효화되는 일을 막기 위한 것이다.
+이미 만들어진 PostgreSQL volume의 role password는 env 변경만으로 자동 갱신되지 않으므로, `make data`는 `deploy/scripts/sync-postgres-passwords.sh`로 현재 `deploy/.env` 값을 DB role에 다시 적용한다.
+`deploy-backend-init`과 `deploy-frontend-init`은 시작하자마자 `make reset`을 실행해 compose 컨테이너, compose 볼륨, 로컬 compose 이미지, Docker build cache를 지운 뒤 다시 배포한다.
 
 ```dotenv
 FRONTEND_PUBLIC_ORIGIN=https://market-fit.jongchoi.com
@@ -294,7 +300,7 @@ backend/services/trend-service/.raw
 `.raw`는 선택 자산이다.
 있으면 trend 배치가 행정동 이름 CSV를 함께 재적재하고, 없어도 기존 DB 이름 매핑을 유지한 채 점수·배너 스냅샷은 갱신한다.
 
-`deploy-backend`, `deploy-backend-init`, `deploy-backend-dump` 워크플로는 self-hosted runner의 배포용 작업 저장소 `market-fit-deploy` 안에 있는 로컬 `backend/services/trend-service/.artifacts`를 그대로 사용한다.
+`deploy-backend`, `deploy-backend-init`, `deploy-backend-dump`, `deploy-frontend-init` 워크플로는 self-hosted runner의 배포용 작업 저장소 `market-fit-deploy` 안에 있는 로컬 `backend/services/trend-service/.artifacts`를 그대로 사용한다.
 워크플로는 repo 최신화 전에 `.artifacts`, `.raw`, `deploy/.env`, dump 디렉터리를 임시 보관했다가 `git reset --hard`와 `git clean -fd` 뒤 다시 복원한다.
 `.raw`는 있으면 같이 유지하고, 없어도 빈 디렉터리만 만들어 둔다.
 

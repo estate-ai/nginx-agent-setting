@@ -135,7 +135,21 @@ jobs:
         run: |
           set -euo pipefail
 
-          test -f "$TARGET_ENV_FILE"
+          if [ ! -f "$TARGET_ENV_FILE" ]; then
+            echo "::error::배포 env 파일이 없습니다: $TARGET_ENV_FILE"
+            echo "::error::이 워크플로는 repository root .env가 아니라 deploy/.env만 사용합니다."
+            if [ -f "$TARGET_REPO_DIR/.env" ]; then
+              echo "::error::root .env는 존재하지만 배포에는 사용되지 않습니다. 값을 deploy/.env로 옮겨 주세요."
+            fi
+            exit 1
+          fi
+
+      # placeholder가 authentik blueprint나 DB 비밀번호로 적용되면 SQL 수동 수정도 다음 배포 때 다시 덮인다.
+      - name: 배포용 env 값 검증
+        run: |
+          set -euo pipefail
+
+          bash "$TARGET_REPO_DIR/deploy/scripts/validate-deploy-env.sh" "$TARGET_ENV_FILE"
 
       # dump가 필요한 워크플로만 배포 clone 디렉터리의 로컬 dump 존재를 확인한다.
       - name: 덤프 파일 확인
