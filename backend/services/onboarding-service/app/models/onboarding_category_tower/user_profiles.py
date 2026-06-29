@@ -140,6 +140,10 @@ _DEFAULT_SAMPLE_CODES = [
 ]
 
 
+def _unit_interval(value: Any) -> float:
+    return float(np.clip(float(value), 0.0, 1.0))
+
+
 def build_user_prototype(category_row: pd.Series) -> dict[str, Any]:
     age_10 = float(category_row["age_10_ratio"])
     age_20 = float(category_row["age_20_ratio"])
@@ -152,23 +156,23 @@ def build_user_prototype(category_row: pd.Series) -> dict[str, Any]:
         "user_id": f"category_proto_{str(category_row['service_category_code']).lower()}",
         "profile_name": f"{category_row['service_category_name']} 기준 프로토타입",
         "target_category_code": str(category_row["service_category_code"]),
-        "stability_level": float(category_row["stability_prior_score"]),
-        "competition_tolerance_level": float(category_row["competition_pressure_score"]),
-        "weekend_preference_level": float(category_row["weekend_sales_ratio"]),
-        "lunch_preference_level": float(category_row["lunch_sales_ratio"]),
-        "evening_preference_level": float(category_row["evening_sales_ratio"]),
-        "late_night_preference_level": float(category_row["late_night_sales_ratio"]),
-        "target_age_10_level": age_10 / age_total,
-        "target_age_20_level": age_20 / age_total,
-        "target_age_30_level": age_30 / age_total,
-        "target_age_40_level": age_40 / age_total,
-        "target_age_50_plus_level": age_50_plus / age_total,
-        "female_preference_level": float(category_row["female_sales_ratio"]),
-        "avg_ticket_preference": float(category_row["avg_ticket_score"]),
-        "traffic_volume_preference": float(category_row["sales_count_score"]),
-        "franchise_affinity_level": float(category_row["franchise_ratio"]),
-        "labor_intensity_tolerance": float(category_row["labor_intensity_score"]),
-        "space_efficiency_preference": float(category_row["space_efficiency_score"]),
+        "stability_level": _unit_interval(category_row["stability_prior_score"]),
+        "competition_tolerance_level": _unit_interval(category_row["competition_pressure_score"]),
+        "weekend_preference_level": _unit_interval(category_row["weekend_sales_ratio"]),
+        "lunch_preference_level": _unit_interval(category_row["lunch_sales_ratio"]),
+        "evening_preference_level": _unit_interval(category_row["evening_sales_ratio"]),
+        "late_night_preference_level": _unit_interval(category_row["late_night_sales_ratio"]),
+        "target_age_10_level": _unit_interval(age_10 / age_total),
+        "target_age_20_level": _unit_interval(age_20 / age_total),
+        "target_age_30_level": _unit_interval(age_30 / age_total),
+        "target_age_40_level": _unit_interval(age_40 / age_total),
+        "target_age_50_plus_level": _unit_interval(age_50_plus / age_total),
+        "female_preference_level": _unit_interval(category_row["female_sales_ratio"]),
+        "avg_ticket_preference": _unit_interval(category_row["avg_ticket_score"]),
+        "traffic_volume_preference": _unit_interval(category_row["sales_count_score"]),
+        "franchise_affinity_level": _unit_interval(category_row["franchise_ratio"]),
+        "labor_intensity_tolerance": _unit_interval(category_row["labor_intensity_score"]),
+        "space_efficiency_preference": _unit_interval(category_row["space_efficiency_score"]),
     }
     return CategoryUserProfilePayload.model_validate(payload).model_dump()
 

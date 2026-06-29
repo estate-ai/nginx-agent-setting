@@ -3,9 +3,11 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
+import pandas as pd
 
 from app.models.onboarding_category_tower.predict import _scale_scores_to_unit_interval
 from app.models.onboarding_category_tower.runtime import predict_payload, train_runtime
+from app.models.onboarding_category_tower.user_profiles import build_user_prototype
 
 
 class OnboardingCategoryTowerTestCase(unittest.TestCase):
@@ -56,6 +58,41 @@ class OnboardingCategoryTowerTestCase(unittest.TestCase):
 
         self.assertAlmostEqual(float(full_scores[0]), float(partial_scores[0]), places=6)
         self.assertAlmostEqual(float(full_scores[2]), float(partial_scores[1]), places=6)
+
+    def test_build_user_prototype_clamps_out_of_range_category_scores(self) -> None:
+        """raw 집계값이 0~1 범위를 넘어도 프로토타입 생성은 validation 에러 없이 clamp 해야 한다."""
+
+        category = pd.Series(
+            {
+                "service_category_code": "CS999999",
+                "service_category_name": "테스트 업종",
+                "stability_prior_score": 1.2,
+                "competition_pressure_score": -0.1,
+                "weekend_sales_ratio": 0.7,
+                "lunch_sales_ratio": 0.4,
+                "evening_sales_ratio": 0.5,
+                "late_night_sales_ratio": 0.2,
+                "age_10_ratio": 0.1,
+                "age_20_ratio": 0.2,
+                "age_30_ratio": 0.3,
+                "age_40_ratio": 0.2,
+                "age_50_plus_ratio": 0.2,
+                "female_sales_ratio": 1.1,
+                "avg_ticket_score": 0.8,
+                "sales_count_score": 0.6,
+                "franchise_ratio": 1.1854735221148087,
+                "labor_intensity_score": 1.3,
+                "space_efficiency_score": -0.2,
+            }
+        )
+
+        payload = build_user_prototype(category)
+
+        self.assertEqual(payload["franchise_affinity_level"], 1.0)
+        self.assertEqual(payload["stability_level"], 1.0)
+        self.assertEqual(payload["competition_tolerance_level"], 0.0)
+        self.assertEqual(payload["labor_intensity_tolerance"], 1.0)
+        self.assertEqual(payload["space_efficiency_preference"], 0.0)
 
 
 if __name__ == "__main__":
