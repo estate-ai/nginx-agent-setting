@@ -43,7 +43,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
       - traefik.enable=true
-      - traefik.http.middlewares.api-cors.headers.accesscontrolalloworiginlist=${TRAEFIK_CORS_ORIGINS:-http://market-fit.jongchoi.com:2080}
+      - traefik.http.middlewares.api-cors.headers.accesscontrolalloworiginlist=${TRAEFIK_CORS_ORIGINS:-https://market-fit.jongchoi.com}
       - traefik.http.middlewares.api-cors.headers.accesscontrolallowmethods=GET,POST,PUT,PATCH,DELETE,OPTIONS
       - traefik.http.middlewares.api-cors.headers.accesscontrolallowheaders=Authorization,Content-Type,X-CSRF-Token,X-User-Id
       - traefik.http.middlewares.api-cors.headers.accesscontrolmaxage=86400
