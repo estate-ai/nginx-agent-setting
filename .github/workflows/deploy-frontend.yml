@@ -1,0 +1,26 @@
+name: deploy-frontend
+
+on:
+  # GitHub Actions 화면에서 수동 실행만 허용한다.
+  workflow_dispatch:
+    inputs:
+      # 기본은 main이며, 필요 시 다른 브랜치도 배포할 수 있다.
+      branch:
+        description: 배포할 브랜치명
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-frontend:
+    # 프론트 standalone 컨테이너만 별도로 빌드하고 재기동하는 배포다.
+    uses: ./.github/workflows/_deploy-runner-common.yml
+    with:
+      workflow_label: deploy-frontend
+      branch: ${{ inputs.branch }}
+      copy_dumps: false
+      # deploy/Makefile의 frontend 타깃을 사용해 frontend 서비스만 올린다.
+      deploy_command: make frontend

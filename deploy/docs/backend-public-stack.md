@@ -1,11 +1,11 @@
 # backend-public-stack
 
-`deploy/compose/backend-public-stack.yml`은 프론트엔드를 제외한 공개 백엔드 스택을 한 번에 올린다.  
-공개 포트는 `2081` 하나만 쓰고, Traefik이 host와 path로 서비스를 나눈다.
+`deploy/compose/backend-public-stack.yml`은 프론트엔드 standalone 컨테이너와 공개 백엔드 스택을 한 번에 올린다.  
+공개 포트는 프론트 `2080`, API/Auth `2081`을 쓴다. API/Auth는 Traefik이 host와 path로 서비스를 나눈다.
 
 ```text
 market-fit.jongchoi.com:2080
--> 프론트엔드 별도 배포
+-> frontend standalone
 
 api.market-fit.jongchoi.com:2081
 -> Traefik
@@ -25,10 +25,14 @@ auth.market-fit.jongchoi.com:2081
 
 ## deploy/compose/backend-public-stack.yml
 
-이 파일은 공개 게이트웨이, DB, 메시징, 스토리지, 애플리케이션 컨테이너를 한 compose에 둔다.
+이 파일은 프론트엔드 standalone, 공개 게이트웨이, DB, 메시징, 스토리지, 애플리케이션 컨테이너를 한 compose에 둔다.
 
 ```yaml
 services:
+  frontend:
+    ports:
+      - "${FRONTEND_PUBLIC_PORT:-2080}:3000"
+
   traefik:
     ports:
       - "${API_PUBLIC_PORT:-2081}:2081"
@@ -84,12 +88,13 @@ GET /api/market/api/v1/status
 ## deploy/.env.example
 
 실제 배포 값은 `deploy/.env` 하나에 모은다.  
-Auth host, API host, frontend origin, DB 비밀번호, OAuth secret, LLM key가 여기 들어간다.
+Auth host, API host, frontend origin, frontend Better Auth secret, DB 비밀번호, OAuth secret, LLM key가 여기 들어간다.
 
 ```dotenv
 FRONTEND_PUBLIC_ORIGIN=http://market-fit.jongchoi.com:2080
 API_PUBLIC_ORIGIN=http://api.market-fit.jongchoi.com:2081
 AUTH_PUBLIC_ORIGIN=http://auth.market-fit.jongchoi.com:2081
+BETTER_AUTH_SECRET=CHANGE_ME_32+_CHARS_RANDOM_VALUE
 
 AUTHENTIK_CLIENT_ID=pickle-web
 AUTHENTIK_CLIENT_SECRET=CHANGE_ME_AUTHENTIK_CLIENT_SECRET
@@ -141,7 +146,7 @@ make restore-db
 -> market.dump / franchise.dump 복원
 
 make services
--> Authentik + backend service 시작
+-> frontend + Authentik + backend service 시작
 
 make train-models
 -> onboarding-service 모델 학습
@@ -154,6 +159,15 @@ SKIP_RESTORE=1 make up
 SKIP_TRAIN=1 make up
 SKIP_RESTORE=1 SKIP_TRAIN=1 make up
 ```
+
+Apple Silicon Mac에서 amd64 이미지 경고를 피하거나 동일 플랫폼으로 강제하고 싶으면 아래 타깃을 쓴다.
+
+```bash
+make up-mac
+```
+
+`make up-mac`은 `deploy/compose/backend-public-stack.mac.yml` 오버라이드를 함께 사용한다.  
+현재는 `backend-db`만 `platform: linux/amd64`로 고정해서 Apple Silicon에서 PostGIS를 안정적으로 띄운다.
 
 ## deploy/scripts/restore-backend-db-market-franchise.sh
 
