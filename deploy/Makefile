@@ -1,11 +1,12 @@
 SHELL := /bin/bash
 
-.PHONY: gateway data restore-db services frontend train-models up up-mac ps logs status down clean
+.PHONY: gateway data restore-db services frontend-codegen frontend train-models up up-mac ps logs status down clean
 
 COMPOSE := docker compose --env-file .env -f compose/backend-public-stack.yml
 MAC_COMPOSE := docker compose --env-file .env -f compose/backend-public-stack.yml -f compose/backend-public-stack.mac.yml
 RESTORE_SCRIPT := ./scripts/restore-backend-db-market-franchise.sh
 TRAIN_SCRIPT := ./scripts/train-onboarding-models.sh
+FRONTEND_API_GEN_SCRIPT := ./scripts/generate-frontend-api-clients.sh
 
 GATEWAY_SERVICES := traefik
 DATA_SERVICES := authentik-db backend-db community-db onboarding-db agent-db post-db trend-db redis rabbitmq minio minio-init
@@ -32,7 +33,12 @@ services:
 	@echo "백엔드 서비스를 빌드하고 시작합니다..."
 	@$(COMPOSE) up -d --build $(APP_SERVICES)
 
-frontend:
+# frontend 빌드 전에 현재 backend OpenAPI 기준으로 Orval 산출물을 다시 만든다.
+frontend-codegen:
+	@echo "프론트엔드 API 타입과 클라이언트를 생성합니다..."
+	@$(FRONTEND_API_GEN_SCRIPT)
+
+frontend: frontend-codegen
 	@echo "프론트엔드 standalone 서비스를 빌드하고 시작합니다..."
 	@$(COMPOSE) up -d --build $(FRONTEND_SERVICE)
 
@@ -49,7 +55,8 @@ up: gateway data restore-db services train-models
 up-mac:
 	@echo "Apple Silicon용 mac 오버라이드로 배포 스택을 시작합니다..."
 	@$(MAC_COMPOSE) up -d $(GATEWAY_SERVICES) $(DATA_SERVICES)
-	@$(MAKE) restore-db
+	@# mac 오버라이드와 dump 오버라이드를 함께 넘겨 backend-db 구성을 맞춘다.
+	@STACK_EXTRA_FILES="$(CURDIR)/compose/backend-public-stack.mac.yml $(CURDIR)/compose/backend-db-market-franchise.dump.yml" $(MAKE) restore-db
 	@$(MAC_COMPOSE) up -d --build $(APP_SERVICES)
 	@$(MAKE) train-models
 

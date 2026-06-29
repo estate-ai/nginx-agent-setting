@@ -47,6 +47,18 @@ services:
       - traefik.http.routers.market.rule=Host(`${API_PUBLIC_HOST}`) && PathPrefix(`/api/market`)
 ```
 
+`backend-db`는 기본 compose에서 dump 파일을 직접 마운트하지 않는다.
+덤프 파일은 `deploy/scripts/restore-backend-db-market-franchise.sh`가 `deploy/compose/backend-db-market-franchise.dump.yml`을 덧붙일 때만 `/dump`에 들어간다.
+
+```text
+backend-public-stack.yml
+-> backend-db data volume만 마운트
+
+backend-public-stack.yml + backend-db-market-franchise.dump.yml
+-> /dump/market.dump
+-> /dump/franchise.dump
+```
+
 `/api/*` prefix는 Traefik strip middleware로 내부 서비스 앞단에서 제거한다.  
 예를 들어 `market-service` 컨트롤러는 `/api/v1/status`를 그대로 유지하고, 외부에서는 아래 주소로 보인다.
 
@@ -157,8 +169,12 @@ make restore-db
 -> market.dump / franchise.dump 복원
 
 make services
--> frontend + Authentik + backend service 시작
+-> Authentik + backend service 시작
 -> trend-service 포함
+
+make frontend
+-> frontend api:gen
+-> frontend standalone 빌드 / 시작
 
 make train-models
 -> onboarding-service 모델 학습
@@ -184,16 +200,20 @@ make up-mac
 ## deploy/scripts/restore-backend-db-market-franchise.sh
 
 이 스크립트는 compose service 이름 `backend-db`에 붙어서 `pg_restore`를 실행한다.  
-`docker exec backend-db ...`처럼 컨테이너 이름에 직접 의존하지 않는다.
+공개 배포 스택에서는 `backend-public-stack.yml`에 `backend-db-market-franchise.dump.yml`을 덧붙여 `backend-db`를 dump 마운트 구성으로 먼저 맞춘 뒤 복원을 진행한다.
 
 ```text
+docker compose up -d backend-db
+-> dump mount 포함
+-> backend-db 재기동 또는 재생성 가능
+
 docker compose exec backend-db psql
 -> market role 생성/갱신
 -> franchise role 생성/갱신
 -> market DB 생성
 -> franchise DB 생성
--> pg_restore /dump/market.dump
--> pg_restore /dump/franchise.dump
+-> pg_restore --clean --if-exists /dump/market.dump
+-> pg_restore --clean --if-exists /dump/franchise.dump
 ```
 
 덤프 파일은 `deploy/.local/backend-db-market-franchise/`에 둔다.
@@ -250,13 +270,35 @@ backend/services/trend-service/.raw
 
 `.raw`는 수동 배치나 재적재가 필요할 때만 사용한다. 일반 `make up`이나 GitHub Actions 배포에서는 별도 학습을 실행하지 않는다.
 
+## deploy/scripts/generate-frontend-api-clients.sh
+
+`make frontend`는 `deploy/scripts/generate-frontend-api-clients.sh`를 먼저 실행한다.
+이 스크립트는 `deploy/.env`를 읽어 `NEXT_PUBLIC_API_ORIGIN`을 `API_PUBLIC_ORIGIN`으로 맞추고, root `docker-compose.yml` label을 기준으로 `frontend/.orval/service-catalog.json`과 `src/shared/api/generated` 산출물을 다시 만든다.
+
+```text
+deploy/.env
+-> API_PUBLIC_ORIGIN
+-> MARKET_DB_USER / FRANCHISE_DB_USER
+-> AUTHENTIK_SERVICE_ROLE_KEY
+
+generate-frontend-api-clients.sh
+-> cd frontend
+-> npm ci
+-> npm run api:gen
+
+make frontend
+-> docker compose up -d --build frontend
+```
+
 ## 주요 파일
 
 - `deploy/compose/backend-public-stack.yml`
+- `deploy/compose/backend-db-market-franchise.dump.yml`
 - `deploy/.env.example`
 - `deploy/Makefile`
 - `deploy/authentik/pickle-web.yaml`
 - `deploy/postgres/init-service-databases.sh`
+- `deploy/scripts/generate-frontend-api-clients.sh`
 - `deploy/scripts/restore-backend-db-market-franchise.sh`
 - `deploy/scripts/train-onboarding-models.sh`
 

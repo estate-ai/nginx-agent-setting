@@ -7,12 +7,23 @@ STACK_FILE="${STACK_FILE:-$ROOT_DIR/compose/backend-public-stack.yml}"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-$ROOT_DIR/.env}"
 DB_SERVICE="${DB_SERVICE:-backend-db}"
 DUMP_DIR="${DUMP_DIR:-$ROOT_DIR/.local/backend-db-market-franchise}"
+STACK_EXTRA_FILES="${STACK_EXTRA_FILES:-}"
 
 if [[ -f "$COMPOSE_ENV_FILE" ]]; then
   set -a
   # shellcheck disable=SC1090
   source "$COMPOSE_ENV_FILE"
   set +a
+fi
+
+STACK_FILE_PATH="$STACK_FILE"
+if [[ -f "$STACK_FILE_PATH" ]]; then
+  STACK_FILE_PATH="$(cd "$(dirname "$STACK_FILE_PATH")" && pwd)/$(basename "$STACK_FILE_PATH")"
+fi
+
+# 기본 공개 배포 스택에서는 restore 시점에만 dump 마운트 오버라이드를 덧붙인다.
+if [[ -z "$STACK_EXTRA_FILES" && "$STACK_FILE_PATH" == "$ROOT_DIR/compose/backend-public-stack.yml" ]]; then
+  STACK_EXTRA_FILES="$ROOT_DIR/compose/backend-db-market-franchise.dump.yml"
 fi
 
 POSTGRES_SUPERUSER_PASSWORD="${BACKEND_DB_POSTGRES_PASSWORD:-${POSTGRES_PASSWORD:-}}"
@@ -33,12 +44,26 @@ fi
 
 COMPOSE=(docker compose --env-file "$COMPOSE_ENV_FILE" -f "$STACK_FILE")
 
+if [[ -n "$STACK_EXTRA_FILES" ]]; then
+  # 공백 구분 추가 compose 파일을 순서대로 이어 붙인다.
+  # shellcheck disable=SC2206
+  EXTRA_STACK_FILES=( $STACK_EXTRA_FILES )
+  for extra_stack_file in "${EXTRA_STACK_FILES[@]}"; do
+    COMPOSE+=(-f "$extra_stack_file")
+  done
+fi
+
+ensure_db_service() {
+  echo ">> 0) backend-db를 restore 구성으로 시작"
+  "${COMPOSE[@]}" up -d "$DB_SERVICE"
+}
+
 wait_for_db() {
   local max_attempts="${DB_READY_MAX_ATTEMPTS:-30}"
   local sleep_seconds="${DB_READY_SLEEP_SECONDS:-2}"
   local attempt=1
 
-  echo ">> 0) backend-db 준비 대기"
+  echo ">> 1) backend-db 준비 대기"
   while (( attempt <= max_attempts )); do
     if "${COMPOSE[@]}" exec -T -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "$DB_SERVICE" \
       pg_isready -U postgres -d postgres >/dev/null 2>&1; then
@@ -62,12 +87,13 @@ run_psql() {
 
 run_restore() {
   "${COMPOSE[@]}" exec -T -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "$DB_SERVICE" \
-    pg_restore -U postgres --no-privileges "$@"
+    pg_restore -U postgres --clean --if-exists --no-privileges "$@"
 }
 
+ensure_db_service
 wait_for_db
 
-echo ">> 1) 롤 생성"
+echo ">> 2) 롤 생성"
 run_psql <<SQL
 DO \$\$
 BEGIN
@@ -85,7 +111,7 @@ END
 \$\$;
 SQL
 
-echo ">> 2) 빈 DB 생성"
+echo ">> 3) 빈 DB 생성"
 run_psql <<'SQL'
 SELECT 'CREATE DATABASE market OWNER market'
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'market')\gexec
@@ -96,11 +122,11 @@ SELECT 'CREATE DATABASE franchise OWNER franchise'
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'franchise')\gexec
 SQL
 
-echo ">> 3) 복원"
+echo ">> 4) 복원"
 run_restore -d market    /dump/market.dump
 run_restore -d franchise /dump/franchise.dump
 
-echo ">> 4) 검증"
+echo ">> 5) 검증"
 run_psql -d market    -tAc "SELECT 'market rows: market_admin_dong_boundaries='||count(*) FROM market_admin_dong_boundaries;"
 run_psql -d franchise -tAc "SELECT 'franchise rows: franchise_brands='||count(*) FROM franchise_brands;"
 echo ">> done"

@@ -5,6 +5,7 @@
 
 ```text
 deploy/
++ compose/backend-db-market-franchise.dump.yml
 + compose/backend-db-market-franchise.oci.yml
 + scripts/restore-backend-db-market-franchise.sh
 + .local/backend-db-market-franchise/market.dump
@@ -48,9 +49,22 @@ services:
 docker compose -f deploy/compose/backend-db-market-franchise.oci.yml up -d
 ```
 
+## deploy/compose/backend-db-market-franchise.dump.yml
+
+`deploy/compose/backend-public-stack.yml`에는 dump 마운트를 넣지 않고, 복원 시점에만 이 파일을 오버라이드로 붙인다.
+
+```yaml
+services:
+  backend-db:
+    volumes:
+      - ../.local/backend-db-market-franchise/market.dump:/dump/market.dump:ro
+      - ../.local/backend-db-market-franchise/franchise.dump:/dump/franchise.dump:ro
+```
+
 ## deploy/scripts/restore-backend-db-market-franchise.sh
 
 이 스크립트는 `market`, `franchise` 롤과 DB를 준비한 뒤 `pg_restore`를 실행한다.
+기본 공개 배포 스택에서는 `backend-public-stack.yml`에 `backend-db-market-franchise.dump.yml`을 자동으로 덧붙인다.
 
 ```bash
 BACKEND_DB_POSTGRES_PASSWORD=<postgres 비밀번호> \
@@ -72,11 +86,14 @@ bash deploy/scripts/restore-backend-db-market-franchise.sh
 실행 흐름은 아래 순서다.
 
 ```text
+docker compose up -d backend-db
+-> dump mount 포함
+
 role 생성/비밀번호 갱신
 -> market DB 생성
 -> franchise DB 생성
--> pg_restore -d market /dump/market.dump
--> pg_restore -d franchise /dump/franchise.dump
+-> pg_restore --clean --if-exists -d market /dump/market.dump
+-> pg_restore --clean --if-exists -d franchise /dump/franchise.dump
 -> row 수 확인
 ```
 
@@ -103,6 +120,7 @@ DB_PASSWORD=<FRANCHISE_DB_PASSWORD>
 ## 주요 파일
 
 - `deploy/compose/backend-db-market-franchise.oci.yml`
+- `deploy/compose/backend-db-market-franchise.dump.yml`
 - `deploy/scripts/restore-backend-db-market-franchise.sh`
 - `backend/services/market-service/src/main/resources/application.yaml`
 - `backend/services/franchise-service/src/main/resources/application.yaml`

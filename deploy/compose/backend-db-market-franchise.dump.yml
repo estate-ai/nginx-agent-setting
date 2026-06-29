@@ -1,0 +1,6 @@
+services:
+  backend-db:
+    # 덤프 파일은 restore 시점에만 별도 오버라이드로 마운트한다.
+    volumes:
+      - ../.local/backend-db-market-franchise/market.dump:/dump/market.dump:ro
+      - ../.local/backend-db-market-franchise/franchise.dump:/dump/franchise.dump:ro

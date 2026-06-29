@@ -142,8 +142,6 @@ services:
     volumes:
       - backend_postgres_data:/var/lib/postgresql/data
       - ../postgres/init-service-databases.sh:/docker-entrypoint-initdb.d/20-init-service-databases.sh:ro
-      - ../.local/backend-db-market-franchise/market.dump:/dump/market.dump:ro
-      - ../.local/backend-db-market-franchise/franchise.dump:/dump/franchise.dump:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 3s
