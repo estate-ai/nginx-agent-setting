@@ -3,7 +3,7 @@
 version: 1
 
 metadata:
-  name: pickle-web-authentik-bootstrap
+  name: pickle-web-authentik-bootstrap-public-v2
   labels:
     blueprints.goauthentik.io/instantiate: "true"
     blueprints.goauthentik.io/description: Pickle Web OIDC provider, Google OAuth source, 서비스롤키 부트스트랩

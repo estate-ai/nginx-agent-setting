@@ -2,7 +2,11 @@ package com.example.server.infrastructure.security;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -99,6 +103,7 @@ public class SecurityConfig {
     public JwtDecoder jwtDecoder(
             @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwkSetUri,
             @Value("${app.auth.jwt.issuer}") String issuer,
+            @Value("${app.auth.jwt.issuer-aliases:}") String issuerAliases,
             @Value("${app.auth.jwt.audience}") String audience
     ) {
         /**
@@ -110,21 +115,34 @@ public class SecurityConfig {
          *
          * jwk-set-uri만으로는 issuer/audience 경계가 충분하지 않으므로
          * issuer/audience validator를 명시적으로 같이 둡니다.
-         */
+        */
         NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        Set<String> acceptedIssuers = parseAllowedValues(issuer, issuerAliases);
 
-        OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(issuer);
+        OAuth2TokenValidator<Jwt> defaultValidator = JwtValidators.createDefault();
+        OAuth2TokenValidator<Jwt> issuerValidator = new JwtClaimValidator<String>(
+                "iss",
+                acceptedIssuers::contains
+        );
         OAuth2TokenValidator<Jwt> audienceValidator = new JwtClaimValidator<Collection<String>>(
                 JwtClaimNames.AUD,
                 audiences -> audiences != null && audiences.contains(audience)
         );
 
         jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                defaultValidator,
                 issuerValidator,
                 audienceValidator
         ));
 
         return jwtDecoder;
+    }
+
+    private Set<String> parseAllowedValues(String primary, String aliases) {
+        return Arrays.stream((primary + "," + aliases).split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private AuthenticationEntryPoint apiAuthenticationEntryPoint() {

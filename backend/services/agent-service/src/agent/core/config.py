@@ -7,6 +7,7 @@ class Settings(BaseSettings):
 
     jwks_url: str = "http://authentik-server:9000/application/o/pickle-web/jwks/"
     jwt_issuer: str = "http://localhost:9000/application/o/pickle-web/"
+    jwt_issuer_aliases: str = ""
     jwt_audience: str = "pickle-web"
     jwt_algorithm: str = "RS256"
 
@@ -38,6 +39,16 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def jwt_issuer_values(self) -> list[str]:
+        issuers = [self.jwt_issuer]
+        issuers.extend(
+            issuer.strip()
+            for issuer in self.jwt_issuer_aliases.split(",")
+            if issuer.strip()
+        )
+        return list(dict.fromkeys(issuers))
 
 
 settings = Settings()

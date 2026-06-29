@@ -25,6 +25,12 @@ class JwtAuthError(Exception):
     """JWT 인증 실패를 내부적으로 구분하기 위한 예외."""
 
 
+def _validate_issuer(payload: dict[str, Any]) -> None:
+    issuer = payload.get("iss")
+    if issuer not in settings.jwt_issuer_values:
+        raise JwtAuthError("JWT issuer does not match expected values")
+
+
 def _extract_auth_user_uuid(payload: dict[str, Any]) -> str:
     user_profile = payload.get("user_profile")
     if not isinstance(user_profile, dict):
@@ -144,12 +150,13 @@ async def _decode_token(token: str) -> dict[str, Any]:
         signing_key,
         algorithms=[settings.jwt_algorithm],
         audience=settings.jwt_audience,
-        issuer=settings.jwt_issuer,
         options={"require": ["sub", "iss", "aud", "exp"]},
     )
 
     if not isinstance(payload, dict):
         raise JwtAuthError("Invalid JWT payload")
+
+    _validate_issuer(payload)
 
     return payload
 

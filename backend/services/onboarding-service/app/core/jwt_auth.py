@@ -113,7 +113,7 @@ def _validate_registered_claims(payload: dict[str, Any]) -> None:
     now = int(time.time())
 
     issuer = payload.get("iss")
-    if issuer != settings.jwt_issuer:
+    if issuer not in settings.jwt_issuer_values:
         raise JwtVerificationError("JWT issuer가 예상 값과 다르다.")
 
     audience = payload.get("aud")

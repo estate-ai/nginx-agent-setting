@@ -16,12 +16,23 @@ class Settings(BaseSettings):
     demo_auth_user_uuid: str = "123e4567-e89b-12d3-a456-426614174000"
     jwks_url: str = "http://authentik-server:9000/application/o/pickle-web/jwks/"
     jwt_issuer: str = "http://localhost:9000/application/o/pickle-web/"
+    jwt_issuer_aliases: str = ""
     jwt_audience: str = "pickle-web"
     jwt_algorithm: str = "RS256"
     bootstrap_train_if_missing: bool = True
     bootstrap_train_epochs: int = 1
 
     model_config = SettingsConfigDict(env_prefix="ONBOARDING_SERVICE_")
+
+    @property
+    def jwt_issuer_values(self) -> list[str]:
+        issuers = [self.jwt_issuer]
+        issuers.extend(
+            issuer.strip()
+            for issuer in self.jwt_issuer_aliases.split(",")
+            if issuer.strip()
+        )
+        return list(dict.fromkeys(issuers))
 
 
 settings = Settings()

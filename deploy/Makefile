@@ -9,6 +9,7 @@ POST_RESTORE_SCRIPT := ./scripts/restore-post-db.sh
 ONBOARDING_TRAIN_SCRIPT := ./scripts/train-onboarding-models.sh
 TREND_TRAIN_SCRIPT := ./scripts/train-trend-models.sh
 FRONTEND_API_GEN_SCRIPT := ./scripts/generate-frontend-api-clients.sh
+AUTHENTIK_BLUEPRINT_REFRESH_SCRIPT := ./scripts/refresh-authentik-blueprint.sh
 
 GATEWAY_SERVICES := traefik
 DATA_SERVICES := authentik-db backend-db community-db onboarding-db agent-db post-db trend-db redis rabbitmq minio minio-init
@@ -36,6 +37,7 @@ restore-db:
 services:
 	@echo "백엔드 서비스를 빌드하고 시작합니다..."
 	@$(COMPOSE) up -d --build $(APP_SERVICES)
+	@$(AUTHENTIK_BLUEPRINT_REFRESH_SCRIPT)
 
 # frontend 빌드 전에 현재 backend OpenAPI 기준으로 Orval 산출물을 다시 만든다.
 frontend-codegen:

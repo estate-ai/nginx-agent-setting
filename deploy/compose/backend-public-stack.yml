@@ -35,6 +35,7 @@ services:
     restart: unless-stopped
     command:
       - --entrypoints.public.address=:2081
+      - --entrypoints.public.forwardedHeaders.trustedIPs=${TRAEFIK_FORWARDED_HEADERS_TRUSTED_IPS:-127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10}
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
     ports:
@@ -84,6 +85,7 @@ services:
       AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-pickle-web}
       AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:?set AUTHENTIK_CLIENT_SECRET}
       AUTHENTIK_SERVICE_ROLE_KEY: ${AUTHENTIK_SERVICE_ROLE_KEY:?set AUTHENTIK_SERVICE_ROLE_KEY}
+      AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS: ${AUTHENTIK_TRUSTED_PROXY_CIDRS:-127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10}
       FRONTEND_PUBLIC_ORIGIN: ${FRONTEND_PUBLIC_ORIGIN:?set FRONTEND_PUBLIC_ORIGIN}
       AUTH_PUBLIC_ORIGIN: ${AUTH_PUBLIC_ORIGIN:?set AUTH_PUBLIC_ORIGIN}
       AUTHENTIK_BETTER_AUTH_CALLBACK_URL: ${AUTHENTIK_BETTER_AUTH_CALLBACK_URL:?set AUTHENTIK_BETTER_AUTH_CALLBACK_URL}
@@ -98,10 +100,17 @@ services:
       - traefik.enable=true
       - traefik.http.routers.authentik.rule=Host(`${AUTH_PUBLIC_HOST}`)
       - traefik.http.routers.authentik.entrypoints=public
+      - traefik.http.routers.authentik.middlewares=authentik-forwarded-headers
+      - traefik.http.middlewares.authentik-forwarded-headers.headers.customrequestheaders.X-Forwarded-Proto=https
+      - traefik.http.middlewares.authentik-forwarded-headers.headers.customrequestheaders.X-Forwarded-Port=443
+      - traefik.http.middlewares.authentik-forwarded-headers.headers.customrequestheaders.X-Forwarded-Host=${AUTH_PUBLIC_HOST}
       - traefik.http.routers.authentik-api.rule=Host(`${API_PUBLIC_HOST}`) && PathPrefix(`/api/authentik`)
       - traefik.http.routers.authentik-api.entrypoints=public
-      - traefik.http.routers.authentik-api.middlewares=authentik-strip,api-cors
+      - traefik.http.routers.authentik-api.middlewares=authentik-strip,authentik-api-forwarded-headers,api-cors
       - traefik.http.middlewares.authentik-strip.stripprefix.prefixes=/api/authentik
+      - traefik.http.middlewares.authentik-api-forwarded-headers.headers.customrequestheaders.X-Forwarded-Proto=https
+      - traefik.http.middlewares.authentik-api-forwarded-headers.headers.customrequestheaders.X-Forwarded-Port=443
+      - traefik.http.middlewares.authentik-api-forwarded-headers.headers.customrequestheaders.X-Forwarded-Host=${API_PUBLIC_HOST}
       - traefik.http.services.authentik.loadbalancer.server.port=9000
 
   authentik-worker:
@@ -121,6 +130,7 @@ services:
       AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-pickle-web}
       AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:?set AUTHENTIK_CLIENT_SECRET}
       AUTHENTIK_SERVICE_ROLE_KEY: ${AUTHENTIK_SERVICE_ROLE_KEY:?set AUTHENTIK_SERVICE_ROLE_KEY}
+      AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS: ${AUTHENTIK_TRUSTED_PROXY_CIDRS:-127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10}
       FRONTEND_PUBLIC_ORIGIN: ${FRONTEND_PUBLIC_ORIGIN:?set FRONTEND_PUBLIC_ORIGIN}
       AUTH_PUBLIC_ORIGIN: ${AUTH_PUBLIC_ORIGIN:?set AUTH_PUBLIC_ORIGIN}
       AUTHENTIK_BETTER_AUTH_CALLBACK_URL: ${AUTHENTIK_BETTER_AUTH_CALLBACK_URL:?set AUTHENTIK_BETTER_AUTH_CALLBACK_URL}
@@ -277,6 +287,7 @@ services:
       PORT: "3001"
       JWKS_URL: http://authentik-server:9000/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/jwks/
       JWT_ISSUER: ${AUTH_PUBLIC_ORIGIN}/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/
+      JWT_ISSUER_ALIASES: http://${AUTH_PUBLIC_HOST}/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/
       JWT_AUDIENCE: ${AUTHENTIK_CLIENT_ID:-pickle-web}
       JWT_ALGS: RS256
       AUTHENTIK_API_URL: http://authentik-server:9000/api/v3
@@ -368,6 +379,7 @@ services:
       ONBOARDING_SERVICE_DEMO_AUTH_USER_UUID: ${ONBOARDING_SERVICE_DEMO_AUTH_USER_UUID:-123e4567-e89b-12d3-a456-426614174000}
       ONBOARDING_SERVICE_JWKS_URL: http://authentik-server:9000/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/jwks/
       ONBOARDING_SERVICE_JWT_ISSUER: ${AUTH_PUBLIC_ORIGIN}/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/
+      ONBOARDING_SERVICE_JWT_ISSUER_ALIASES: http://${AUTH_PUBLIC_HOST}/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/
       ONBOARDING_SERVICE_JWT_AUDIENCE: ${AUTHENTIK_CLIENT_ID:-pickle-web}
       ONBOARDING_SERVICE_JWT_ALGORITHM: RS256
     volumes:
@@ -394,6 +406,7 @@ services:
       FF_V2_EVENT_STREAMING: "true"
       JWKS_URL: http://authentik-server:9000/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/jwks/
       JWT_ISSUER: ${AUTH_PUBLIC_ORIGIN}/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/
+      JWT_ISSUER_ALIASES: http://${AUTH_PUBLIC_HOST}/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/
       JWT_AUDIENCE: ${AUTHENTIK_CLIENT_ID:-pickle-web}
       JWT_ALGORITHM: RS256
       CORS_ORIGINS: ${FRONTEND_PUBLIC_ORIGIN}
@@ -447,6 +460,7 @@ services:
       S3_PRESIGNED_URL_EXPIRATION_SECONDS: ${S3_PRESIGNED_URL_EXPIRATION_SECONDS:-600}
       JWKS_URL: http://authentik-server:9000/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/jwks/
       JWT_ISSUER: ${AUTH_PUBLIC_ORIGIN}/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/
+      JWT_ISSUER_ALIASES: http://${AUTH_PUBLIC_HOST}/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/
       JWT_AUDIENCE: ${AUTHENTIK_CLIENT_ID:-pickle-web}
       JWT_ALGORITHM: RS256
     depends_on:
@@ -481,7 +495,9 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-guest}
       JWKS_URL: http://authentik-server:9000/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/jwks/
       JWT_ISSUER: ${AUTH_PUBLIC_ORIGIN}/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/
+      JWT_ISSUER_ALIASES: http://${AUTH_PUBLIC_HOST}/application/o/${AUTHENTIK_CLIENT_ID:-pickle-web}/
       JWT_AUDIENCE: ${AUTHENTIK_CLIENT_ID:-pickle-web}
+      CORS_ORIGINS: ${FRONTEND_PUBLIC_ORIGIN}
       POST_NOTIFICATION_MODE: ${POST_NOTIFICATION_MODE:-RABBIT}
       POST_NOTIFICATION_EXCHANGE: ${POST_NOTIFICATION_EXCHANGE:-pickly.events.exchange}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}

@@ -130,6 +130,13 @@ AUTHENTIK_BETTER_AUTH_CALLBACK_URL=https://market-fit.jongchoi.com/api/auth/oaut
 compose는 `deploy/.env`를 `/app/.env`로 마운트해서 별도 agent 전용 env 파일을 만들지 않는다.
 프론트 standalone의 Better Auth는 `AUTH_PUBLIC_ORIGIN` 기준 discovery 문서를 읽는다.
 
+Nginx Proxy Manager 같은 상위 프록시 뒤에 둘 때는 Traefik과 Authentik이 `X-Forwarded-*` 헤더를 신뢰하도록 trusted proxy CIDR도 함께 잡아야 한다.
+
+```dotenv
+TRAEFIK_FORWARDED_HEADERS_TRUSTED_IPS=127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10
+AUTHENTIK_TRUSTED_PROXY_CIDRS=127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10
+```
+
 ```json
 {
   "env": ".env"

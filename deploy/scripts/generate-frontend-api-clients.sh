@@ -8,6 +8,7 @@ FRONTEND_DIR="$REPO_ROOT/frontend"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-$ROOT_DIR/.env}"
 STACK_FILE="${STACK_FILE:-$ROOT_DIR/compose/backend-public-stack.yml}"
 COMPOSE=(docker compose --env-file "$COMPOSE_ENV_FILE" -f "$STACK_FILE")
+AUTHENTIK_BLUEPRINT_REFRESH_SCRIPT="${AUTHENTIK_BLUEPRINT_REFRESH_SCRIPT:-$ROOT_DIR/scripts/refresh-authentik-blueprint.sh}"
 TEMP_ENV_FILES=()
 
 cleanup_temp_env_files() {
@@ -66,7 +67,8 @@ ensure_temp_env_file \
   "$REPO_ROOT/backend/services/agent-service/.env.example"
 
 echo ">> frontend codegen에 필요한 gateway/auth 라우팅 반영"
-"${COMPOSE[@]}" up -d traefik authentik-server
+"${COMPOSE[@]}" up -d traefik authentik-server authentik-worker
+"$AUTHENTIK_BLUEPRINT_REFRESH_SCRIPT"
 
 echo ">> frontend 의존성 설치"
 (

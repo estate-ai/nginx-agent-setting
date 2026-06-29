@@ -8,11 +8,16 @@ app.use(express.json());
 const PORT = Number(process.env.PORT || 3001);
 const JWKS_URL = process.env.JWKS_URL;
 const JWT_ISSUER = process.env.JWT_ISSUER;
+const JWT_ISSUER_ALIASES = (process.env.JWT_ISSUER_ALIASES || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE;
 const JWT_ALGS = (process.env.JWT_ALGS || process.env.JWT_ALGORITHM || "RS256")
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean);
+const JWT_ISSUERS = [...new Set([JWT_ISSUER, ...JWT_ISSUER_ALIASES])];
 const AUTHENTIK_API_URL = (
   process.env.AUTHENTIK_API_URL || "http://authentik-server:9000/api/v3"
 ).replace(/\/+$/, "");
@@ -335,7 +340,7 @@ const verifyAccessToken = async (authorizationHeader) => {
 
   try {
     const { payload } = await jwtVerify(accessToken, jwks, {
-      issuer: JWT_ISSUER,
+      issuer: JWT_ISSUERS.length === 1 ? JWT_ISSUERS[0] : JWT_ISSUERS,
       audience: JWT_AUDIENCE,
       algorithms: JWT_ALGS,
     });

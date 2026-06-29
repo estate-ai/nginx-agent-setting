@@ -1,8 +1,11 @@
 package com.marketfit.post.infrastructure.security;
 
+import java.util.Arrays;
 import java.util.Collection;
-
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -67,22 +70,41 @@ public class SecurityConfig {
         JwtDecoder jwtDecoder(
                         @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwkSetUri,
                         @Value("${app.auth.issuer}") String issuer,
+                        @Value("${app.auth.issuer-aliases:}") String issuerAliases,
                         @Value("${app.auth.audience}") String audience) {
                 NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
-                OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(issuer);
+                Set<String> acceptedIssuers = parseAllowedValues(issuer, issuerAliases);
+                OAuth2TokenValidator<Jwt> defaultValidator = JwtValidators.createDefault();
+                OAuth2TokenValidator<Jwt> issuerValidator = new JwtClaimValidator<String>(
+                                "iss",
+                                acceptedIssuers::contains);
                 OAuth2TokenValidator<Jwt> audienceValidator = new JwtClaimValidator<Collection<String>>(
                                 JwtClaimNames.AUD,
                                 audiences -> audiences != null && audiences.contains(audience));
-                decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(issuerValidator, audienceValidator));
+                decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                                defaultValidator,
+                                issuerValidator,
+                                audienceValidator));
                 return decoder;
         }
 
+        private Set<String> parseAllowedValues(String primary, String aliases) {
+                return Arrays.stream((primary + "," + aliases).split(","))
+                                .map(String::trim)
+                                .filter(value -> !value.isEmpty())
+                                .collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+
         @Bean
-        CorsConfigurationSource corsConfigurationSource() {
+        CorsConfigurationSource corsConfigurationSource(
+                        @Value("${app.cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000}") String allowedOrigins
+        ) {
                 CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(List.of(
-                                "http://localhost:3000",
-                                "http://127.0.0.1:3000"));
+                configuration.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
+                                .map(String::trim)
+                                .filter(origin -> !origin.isEmpty())
+                                .distinct()
+                                .collect(Collectors.toList()));
                 configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                 configuration.setAllowedHeaders(List.of("*"));
                 configuration.setExposedHeaders(List.of("*"));

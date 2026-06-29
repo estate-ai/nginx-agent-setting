@@ -26,7 +26,10 @@ spring:
 app:
   auth:
     issuer: ${JWT_ISSUER:http://localhost:9000/application/o/pickle-web/}
+    issuer-aliases: ${JWT_ISSUER_ALIASES:}
     audience: ${JWT_AUDIENCE:pickle-web}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
   notification:
     exchange: ${POST_NOTIFICATION_EXCHANGE:pickly.events.exchange}
     mode: ${POST_NOTIFICATION_MODE:NOOP}
