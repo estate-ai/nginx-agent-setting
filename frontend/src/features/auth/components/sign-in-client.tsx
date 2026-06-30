@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, MessageCircle } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { useState } from "react"
 import { authClient } from "@/features/auth/lib/auth-client"
 import { getDefaultLoginOption } from "@/features/auth/lib/login-options"
@@ -13,20 +13,6 @@ const SOCIAL_PROVIDERS = [
     icon: GoogleIcon,
     className:
       "border-neutral-200 bg-white text-neutral-900 hover:border-neutral-300 hover:bg-neutral-50",
-  },
-  {
-    id: "kakao",
-    label: "카카오로 계속하기",
-    icon: KakaoIcon,
-    className:
-      "border-[#FEE500] bg-[#FEE500] text-[#191919] hover:border-[#FEE500] hover:bg-[#f4dc00]",
-  },
-  {
-    id: "naver",
-    label: "네이버로 계속하기",
-    icon: NaverIcon,
-    className:
-      "border-[#03C75A] bg-[#03C75A] text-white hover:border-[#03C75A] hover:bg-[#02b350]",
   },
 ] as const
 
@@ -134,20 +120,5 @@ function GoogleIcon() {
         d="M12 6.01c1.47 0 2.79.51 3.83 1.5l2.87-2.88A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.96 5.52l3.35 2.62C7.18 7.77 9.39 6.01 12 6.01Z"
       />
     </svg>
-  )
-}
-
-function KakaoIcon() {
-  return <MessageCircle className="size-5 shrink-0 fill-current" aria-hidden />
-}
-
-function NaverIcon() {
-  return (
-    <span
-      aria-hidden="true"
-      className="flex size-5 shrink-0 items-center justify-center rounded-sm text-base font-black leading-none"
-    >
-      N
-    </span>
   )
 }
