@@ -2,11 +2,13 @@ import Link from "next/link"
 import { Sparkles } from "lucide-react"
 import { Button } from "@/shared/components/ui/button"
 import { CardContent } from "@/shared/components/ui/card"
+import { cn } from "@/shared/lib/utils"
 
 type RecommendationEmptyProps = {
   hasRecommendations: boolean
   isSessionPending: boolean
   loginHref: string
+  onboardingContent?: React.ReactNode
   onResetFilters: () => void
   shouldShowLoginCta: boolean
 }
@@ -15,12 +17,28 @@ export function RecommendationEmpty({
   hasRecommendations,
   isSessionPending,
   loginHref,
+  onboardingContent,
   onResetFilters,
   shouldShowLoginCta,
 }: RecommendationEmptyProps) {
+  const shouldRenderOnboardingContent =
+    !hasRecommendations &&
+    !isSessionPending &&
+    !shouldShowLoginCta &&
+    onboardingContent
+
   return (
-    <CardContent className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-3 text-center text-xs">
-      <Sparkles className="h-6 w-6 text-muted-foreground" />
+    <CardContent
+      className={cn(
+        "flex flex-1 flex-col gap-3 px-4 py-3 text-xs",
+        shouldRenderOnboardingContent
+          ? "items-stretch justify-start text-left"
+          : "items-center justify-center text-center"
+      )}
+    >
+      {shouldRenderOnboardingContent ? null : (
+        <Sparkles className="h-6 w-6 text-muted-foreground" />
+      )}
       {hasRecommendations ? (
         <>
           <p className="leading-relaxed text-muted-foreground">
@@ -49,6 +67,8 @@ export function RecommendationEmpty({
             <Link href={loginHref}>로그인하기</Link>
           </Button>
         </>
+      ) : shouldRenderOnboardingContent ? (
+        onboardingContent
       ) : (
         <>
           <p className="leading-relaxed text-muted-foreground">

@@ -442,10 +442,12 @@ services:
       ONBOARDING_SERVICE_AUTO_CREATE_SCHEMA: "true"
       ONBOARDING_SERVICE_FRONTEND_TWO_TOWER_BASE_URL: "http://localhost:3000/example/two-tower"
       ONBOARDING_SERVICE_DEMO_AUTH_USER_UUID: "123e4567-e89b-12d3-a456-426614174000"
+      ONBOARDING_CATEGORY_DATA_MODE: "sample"
     expose:
       - "8000"
     volumes:
       - ./backend/services/onboarding-service/.artifacts:/app/.artifacts
+      - ./backend/services/onboarding-service/.raw:/app/.raw
     depends_on:
       onboarding-db:
         condition: service_healthy

@@ -39,7 +39,9 @@ export type MarketSearchArea = {
 
 export type MarketRecommendedArea = {
   dongCode: DongCode
+  dongName?: string
   score: number
+  sigunguName?: string
 }
 
 export type MarketFranchiseRecommendation = {

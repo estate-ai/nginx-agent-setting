@@ -27,10 +27,10 @@ export function useMarketRecommendations() {
           centerLat: adminArea?.centerLat ?? 0,
           centerLng: adminArea?.centerLng ?? 0,
           dongCode: area.dongCode,
-          dongName: adminArea?.name ?? area.dongCode,
+          dongName: adminArea?.name ?? area.dongName ?? area.dongCode,
           score: area.score,
           sigunguCode: adminArea?.sigunguCode ?? "",
-          sigunguName: adminArea?.sigunguName ?? "-",
+          sigunguName: adminArea?.sigunguName ?? area.sigunguName ?? "-",
         }
       }),
     [adminAreaByDongCode, query.data]
