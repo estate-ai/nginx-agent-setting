@@ -15,8 +15,9 @@ from app.models.onboarding_two_tower.train import (
     USER_STRING_FEATURES,
     _tensor_dict,
     load_model,
+    resolve_data_mode,
 )
-from app.models.onboarding_two_tower.user_profiles import DEFAULT_USER_PROFILES, load_user_profiles
+from app.models.onboarding_two_tower.user_profiles import load_user_profiles
 from app.models.item_catalog.features import build_item_features
 
 
@@ -26,17 +27,17 @@ def _scale_scores_to_unit_interval(scores: np.ndarray) -> np.ndarray:
     return np.clip(scaled, 1e-6, 1.0 - 1e-6).astype(np.float32)
 
 
-def _resolve_user_profile(payload: dict[str, Any]) -> pd.DataFrame:
-    users = load_user_profiles()
+def _resolve_user_profile(payload: dict[str, Any], data_mode: str) -> pd.DataFrame:
+    users = load_user_profiles(data_mode=data_mode)
     user_id = str(payload.get("user_id") or "")
     if user_id:
         matched = users[users["user_id"] == user_id]
         if not matched.empty:
             base = matched.iloc[[0]].copy()
         else:
-            base = pd.DataFrame([DEFAULT_USER_PROFILES[0]])
+            base = users.iloc[[0]].copy()
     else:
-        base = pd.DataFrame([DEFAULT_USER_PROFILES[0]])
+        base = users.iloc[[0]].copy()
 
     if "profile_name" not in payload or payload["profile_name"] is None:
         payload["profile_name"] = str(base.at[0, "profile_name"])
@@ -54,9 +55,15 @@ def predict_with_runtime(
     metadata: dict[str, Any],
     user_profile: dict[str, Any],
     top_k: int = 5,
+    data_mode: str | None = None,
 ) -> dict[str, object]:
-    items = build_item_features(data_mode="sample").copy()
-    user = _resolve_user_profile(user_profile)
+    resolved_data_mode = resolve_data_mode(data_mode, metadata)
+    items = build_item_features(data_mode=resolved_data_mode).copy()
+    user = _resolve_user_profile(user_profile, data_mode=resolved_data_mode)
+    preferred_category_code = str(user.iloc[0]["preferred_category_code"])
+    category_items = items[items["service_category_code"].astype(str) == preferred_category_code].copy()
+    if not category_items.empty:
+        items = category_items
 
     item_tensors = {
         name: tf.convert_to_tensor(

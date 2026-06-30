@@ -10,7 +10,7 @@ from app.surveys.contracts import (
     SurveyProfileUpdateRequest,
 )
 from app.surveys.definitions import active_survey_definition
-from app.surveys.service import _score_definition
+from app.surveys.service import _category_codes_for_data_mode, _score_definition
 
 
 class SurveyScoringTestCase(unittest.TestCase):
@@ -89,6 +89,14 @@ class SurveyScoringTestCase(unittest.TestCase):
             1.0,
             places=2,
         )
+
+    def test_area_recommendation_category_codes_use_raw_catalog(self) -> None:
+        """상권 추천 업종 검증 코드는 raw 카탈로그에서 동적으로 읽어야 한다."""
+
+        codes = _category_codes_for_data_mode("raw")
+
+        self.assertIn("CS300002", codes)
+        self.assertGreaterEqual(len(codes), 60)
 
 
 if __name__ == "__main__":

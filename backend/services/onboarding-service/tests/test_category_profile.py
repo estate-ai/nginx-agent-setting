@@ -20,6 +20,15 @@ class CategoryProfileTestCase(unittest.TestCase):
         self.assertGreater(float(bakery["avg_business_years"]), 0)
         self.assertIn("stability_prior_score", frame.columns.tolist())
         self.assertIn("competition_pressure_score", frame.columns.tolist())
+        self.assertIn("startup_cost_million_krw_proxy", frame.columns.tolist())
+
+    def test_raw_category_profiles_include_convenience_store(self) -> None:
+        """raw 업종 프로파일은 기존 5개 외 편의점 코드도 포함해야 한다."""
+
+        frame = build_category_profiles(data_mode="raw", trainable_only=True)
+
+        self.assertIn("CS300002", set(frame["service_category_code"].astype(str)))
+        self.assertGreaterEqual(len(frame), 60)
 
 
 if __name__ == "__main__":

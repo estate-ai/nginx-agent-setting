@@ -1,111 +1,21 @@
 from __future__ import annotations
 
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
+from app.core.config import settings
+from app.models.category_profile.features import (
+    build_category_profiles,
+    category_options as category_profile_options,
+)
+
 SERVICE_ROOT = Path(__file__).resolve().parents[3]
 SAMPLE_USER_PROFILES = SERVICE_ROOT / ".sample" / "user_tower_profiles.sample.jsonl"
 USER_TOWER_FEATURE_SCALE = "zero_to_one_v1"
-
-CATEGORY_OPTIONS: list[dict[str, str]] = [
-    {"code": "CS100001", "label": "한식음식점"},
-    {"code": "CS100003", "label": "일식음식점"},
-    {"code": "CS100004", "label": "양식음식점"},
-    {"code": "CS100005", "label": "제과점"},
-    {"code": "CS100007", "label": "치킨전문점"},
-]
-
-CATEGORY_LABEL_BY_CODE = {option["code"]: option["label"] for option in CATEGORY_OPTIONS}
-
-DEFAULT_USER_PROFILES: list[dict[str, Any]] = [
-    {
-        "user_id": "profile_urban_evening_growth",
-        "profile_name": "역세권 저녁 매출 성장형",
-        "preferred_category_code": "CS100004",
-        "budget_level": 0.75,
-        "stability_level": 0.25,
-        "subway_dependency_level": 1.0,
-        "weekend_preference_level": 0.75,
-        "evening_preference_level": 1.0,
-        "resident_focus_level": 0.25,
-        "worker_focus_level": 1.0,
-        "rent_sensitivity_level": 0.25,
-        "competition_tolerance_level": 0.75,
-    },
-    {
-        "user_id": "profile_safe_residential_bakery",
-        "profile_name": "주거 밀착 안정형 제과",
-        "preferred_category_code": "CS100005",
-        "budget_level": 0.25,
-        "stability_level": 1.0,
-        "subway_dependency_level": 0.0,
-        "weekend_preference_level": 0.5,
-        "evening_preference_level": 0.25,
-        "resident_focus_level": 1.0,
-        "worker_focus_level": 0.0,
-        "rent_sensitivity_level": 1.0,
-        "competition_tolerance_level": 0.0,
-    },
-    {
-        "user_id": "profile_mixed_family_korean",
-        "profile_name": "가족형 한식 균형 운영",
-        "preferred_category_code": "CS100001",
-        "budget_level": 0.5,
-        "stability_level": 0.75,
-        "subway_dependency_level": 0.25,
-        "weekend_preference_level": 0.75,
-        "evening_preference_level": 0.5,
-        "resident_focus_level": 1.0,
-        "worker_focus_level": 0.25,
-        "rent_sensitivity_level": 0.75,
-        "competition_tolerance_level": 0.25,
-    },
-    {
-        "user_id": "profile_lunch_office_japanese",
-        "profile_name": "오피스 점심 일식형",
-        "preferred_category_code": "CS100003",
-        "budget_level": 0.5,
-        "stability_level": 0.5,
-        "subway_dependency_level": 1.0,
-        "weekend_preference_level": 0.25,
-        "evening_preference_level": 0.25,
-        "resident_focus_level": 0.0,
-        "worker_focus_level": 1.0,
-        "rent_sensitivity_level": 0.5,
-        "competition_tolerance_level": 0.5,
-    },
-    {
-        "user_id": "profile_night_chicken_aggressive",
-        "profile_name": "야간 외식 공격형",
-        "preferred_category_code": "CS100007",
-        "budget_level": 0.75,
-        "stability_level": 0.0,
-        "subway_dependency_level": 0.75,
-        "weekend_preference_level": 1.0,
-        "evening_preference_level": 1.0,
-        "resident_focus_level": 0.5,
-        "worker_focus_level": 0.75,
-        "rent_sensitivity_level": 0.0,
-        "competition_tolerance_level": 1.0,
-    },
-    {
-        "user_id": "profile_small_safe_general",
-        "profile_name": "소규모 안정형 일반 외식",
-        "preferred_category_code": "CS100001",
-        "budget_level": 0.0,
-        "stability_level": 1.0,
-        "subway_dependency_level": 0.0,
-        "weekend_preference_level": 0.25,
-        "evening_preference_level": 0.25,
-        "resident_focus_level": 0.75,
-        "worker_focus_level": 0.0,
-        "rent_sensitivity_level": 1.0,
-        "competition_tolerance_level": 0.0,
-    },
-]
 
 USER_NUMERIC_FIELDS = [
     "budget_level",
@@ -195,20 +105,105 @@ USER_CONTROL_SPECS = [
 ]
 
 
-def category_options() -> list[dict[str, str]]:
-    return [option.copy() for option in CATEGORY_OPTIONS]
+def _resolve_data_mode(data_mode: str | None = None) -> str:
+    normalized = str(data_mode or settings.category_data_mode).strip().lower()
+    if normalized in {"sample", "raw"}:
+        return normalized
+    raise ValueError("data_mode must be 'sample' or 'raw'")
+
+
+@lru_cache(maxsize=None)
+def _category_option_rows(data_mode: str, trainable_only: bool) -> tuple[tuple[str, str, str], ...]:
+    return tuple(
+        (
+            str(option["code"]),
+            str(option["label"]),
+            str(option.get("group", "unknown")),
+        )
+        for option in category_profile_options(data_mode=data_mode, trainable_only=trainable_only)
+    )
+
+
+def category_options(data_mode: str | None = None, trainable_only: bool = True) -> list[dict[str, str]]:
+    resolved_data_mode = _resolve_data_mode(data_mode)
+    return [
+        {"code": code, "label": label, "group": group}
+        for code, label, group in _category_option_rows(resolved_data_mode, trainable_only)
+    ]
+
+
+def category_label_by_code(data_mode: str | None = None, trainable_only: bool = True) -> dict[str, str]:
+    return {
+        option["code"]: option["label"]
+        for option in category_options(data_mode=data_mode, trainable_only=trainable_only)
+    }
+
+
+def __getattr__(name: str) -> Any:
+    if name == "CATEGORY_OPTIONS":
+        return category_options()
+    if name == "CATEGORY_LABEL_BY_CODE":
+        return category_label_by_code()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def _unit_interval(value: Any) -> float:
+    return max(0.0, min(1.0, float(value)))
+
+
+def _budget_level_from_startup_cost(startup_cost: Any) -> float:
+    normalized = (float(startup_cost) - 50.0) / 270.0
+    return round(_unit_interval(normalized + 0.08), 2)
+
+
+def build_user_profile_from_category(category_row: pd.Series) -> dict[str, Any]:
+    return {
+        "user_id": f"category_area_{str(category_row['service_category_code']).lower()}",
+        "profile_name": f"{category_row['service_category_name']} 상권 탐색 프로필",
+        "preferred_category_code": str(category_row["service_category_code"]),
+        "budget_level": _budget_level_from_startup_cost(category_row["startup_cost_million_krw_proxy"]),
+        "stability_level": round(_unit_interval(category_row["stability_prior_score"]), 2),
+        "subway_dependency_level": round(_unit_interval(category_row["sales_count_score"]), 2),
+        "weekend_preference_level": round(_unit_interval(category_row["weekend_sales_ratio"]), 2),
+        "evening_preference_level": round(_unit_interval(category_row["evening_sales_ratio"]), 2),
+        "resident_focus_level": 0.5,
+        "worker_focus_level": 0.5,
+        "rent_sensitivity_level": round(1.0 - _budget_level_from_startup_cost(category_row["startup_cost_million_krw_proxy"]), 2),
+        "competition_tolerance_level": round(_unit_interval(category_row["competition_pressure_score"]), 2),
+    }
+
+
+@lru_cache(maxsize=None)
+def _generated_user_profile_rows(data_mode: str) -> tuple[str, ...]:
+    categories = build_category_profiles(data_mode=data_mode, trainable_only=True)
+    rows = [
+        build_user_profile_from_category(category)
+        for _, category in categories.iterrows()
+    ]
+    return tuple(json.dumps(row, ensure_ascii=False, sort_keys=True) for row in rows)
+
+
+def generate_user_profiles(data_mode: str | None = None) -> list[dict[str, Any]]:
+    resolved_data_mode = _resolve_data_mode(data_mode)
+    return [
+        json.loads(row)
+        for row in _generated_user_profile_rows(resolved_data_mode)
+    ]
 
 
 def ensure_sample_user_profiles(path: Path = SAMPLE_USER_PROFILES) -> Path:
     if path.exists():
         return path
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = "\n".join(json.dumps(row, ensure_ascii=False) for row in DEFAULT_USER_PROFILES)
+    payload = "\n".join(json.dumps(row, ensure_ascii=False) for row in generate_user_profiles(data_mode="sample"))
     path.write_text(payload + "\n", encoding="utf-8")
     return path
 
 
-def load_user_profiles(path: Path = SAMPLE_USER_PROFILES) -> pd.DataFrame:
+def load_user_profiles(path: Path | None = None, data_mode: str | None = None) -> pd.DataFrame:
+    if path is None:
+        return pd.DataFrame(generate_user_profiles(data_mode=data_mode))
+
     source = ensure_sample_user_profiles(path)
     rows: list[dict[str, Any]] = []
     for line in source.read_text(encoding="utf-8").splitlines():

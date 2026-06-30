@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,14 +20,17 @@ from app.models.onboarding_two_tower.user_profiles import (
     build_user_item_labels,
     load_user_profiles,
 )
+from app.core.config import settings
 from app.models.item_catalog.features import build_item_features
 
 SERVICE_ROOT = Path(__file__).resolve().parents[3]
 ARTIFACT_DIR = SERVICE_ROOT / ".artifacts" / "onboarding_two_tower"
 SEED = 42
+VALID_DATA_MODES = {"sample", "raw"}
+LEARNING_RATE = 0.02
+logger = logging.getLogger(__name__)
 USER_STRING_FEATURES = ["preferred_category_code"]
 ITEM_STRING_FEATURES = [
-    "item_id",
     "area_code",
     "service_category_code",
     "subway_coverage_level",
@@ -90,9 +94,25 @@ def _tensor_dict(
     return result
 
 
-def _training_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    users = load_user_profiles().copy()
-    items = build_item_features(data_mode="sample").copy()
+def resolve_data_mode(
+    data_mode: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> str:
+    candidates = [
+        data_mode,
+        settings.category_data_mode,
+        metadata.get("data_mode") if metadata is not None else None,
+    ]
+    for candidate in candidates:
+        normalized = str(candidate or "").strip().lower()
+        if normalized in VALID_DATA_MODES:
+            return normalized
+    raise ValueError("data_mode must be 'sample' or 'raw'")
+
+
+def _training_frames(data_mode: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    users = load_user_profiles(data_mode=data_mode).copy()
+    items = build_item_features(data_mode=data_mode).copy()
     for column in USER_STRING_FEATURES:
         users[column] = users[column].fillna("unknown").astype(str)
     for column in ITEM_STRING_FEATURES:
@@ -194,11 +214,12 @@ def build_model(users: pd.DataFrame, items: pd.DataFrame) -> Any:
     return OnboardingTwoTower()
 
 
-def train_and_save(epochs: int = 20) -> dict[str, Any]:
+def train_and_save(epochs: int = 20, data_mode: str | None = None) -> dict[str, Any]:
     import tensorflow as tf
 
+    resolved_data_mode = resolve_data_mode(data_mode)
     tf.random.set_seed(SEED)
-    users, items, positives = _training_frames()
+    users, items, positives = _training_frames(resolved_data_mode)
     train_columns = [*USER_STRING_FEATURES, *USER_NUMERIC_FIELDS, *ITEM_STRING_FEATURES, *ITEM_NUMERIC_FEATURES]
     dataset = tf.data.Dataset.from_tensor_slices(
         _tensor_dict(
@@ -215,9 +236,9 @@ def train_and_save(epochs: int = 20) -> dict[str, Any]:
     model = build_model(users, items)
     try:
         # macOS에서 legacy optimizer가 더 안정적으로 동작한다.
-        optimizer = tf.keras.optimizers.legacy.Adagrad(learning_rate=0.05)
+        optimizer = tf.keras.optimizers.legacy.Adagrad(learning_rate=LEARNING_RATE)
     except AttributeError:
-        optimizer = tf.keras.optimizers.Adagrad(learning_rate=0.05)
+        optimizer = tf.keras.optimizers.Adagrad(learning_rate=LEARNING_RATE)
     model.compile(optimizer=optimizer)
     history = model.fit(dataset, epochs=epochs, verbose=0)
 
@@ -277,12 +298,14 @@ def train_and_save(epochs: int = 20) -> dict[str, Any]:
 
     metadata = {
         "model_id": "onboarding_two_tower",
+        "data_mode": resolved_data_mode,
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "epochs": epochs,
         "rows": int(len(positives)),
         "user_count": int(len(users)),
         "item_count": int(len(items)),
         "embedding_dim": int(item_embeddings.shape[1]),
+        "learning_rate": LEARNING_RATE,
         "final_loss": round(float(history.history["loss"][-1]), 6),
         "hit_rate_at_3": round(hit_count / len(users), 6),
         "mrr": round(float(np.mean(reciprocal_ranks)), 6),
@@ -304,17 +327,11 @@ def train_and_save(epochs: int = 20) -> dict[str, Any]:
     return metadata
 
 
-def load_model() -> tuple[Any, dict[str, Any]]:
+def _build_initialized_model(data_mode: str) -> tuple[Any, pd.DataFrame, pd.DataFrame]:
     import tensorflow as tf
 
-    metadata_path = ARTIFACT_DIR / "metadata.json"
-    if not metadata_path.exists():
-        metadata = train_and_save()
-    else:
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-
-    users = load_user_profiles().copy()
-    items = build_item_features(data_mode="sample").copy()
+    users = load_user_profiles(data_mode=data_mode).copy()
+    items = build_item_features(data_mode=data_mode).copy()
     model = build_model(users, items)
     sample_user = users.iloc[[0]]
     sample_item = items.iloc[[0]]
@@ -342,13 +359,37 @@ def load_model() -> tuple[Any, dict[str, Any]]:
             for name in [*ITEM_STRING_FEATURES, *ITEM_NUMERIC_FEATURES]
         }
     )
-    model.user_model.load_weights(ARTIFACT_DIR / "user_tower.weights.h5")
-    model.item_model.load_weights(ARTIFACT_DIR / "item_tower.weights.h5")
+    return model, users, items
+
+
+def load_model(data_mode: str | None = None) -> tuple[Any, dict[str, Any]]:
+    metadata_path = ARTIFACT_DIR / "metadata.json"
+    if not metadata_path.exists():
+        metadata = train_and_save(data_mode=data_mode)
+    else:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+
+    resolved_data_mode = resolve_data_mode(data_mode, metadata)
+    model, _, _ = _build_initialized_model(resolved_data_mode)
+    try:
+        model.user_model.load_weights(ARTIFACT_DIR / "user_tower.weights.h5")
+        model.item_model.load_weights(ARTIFACT_DIR / "item_tower.weights.h5")
+    except (OSError, ValueError) as error:
+        logger.warning(
+            "onboarding_two_tower artifacts are stale for data_mode=%s; retraining to recover.",
+            resolved_data_mode,
+            exc_info=error,
+        )
+        metadata = train_and_save(data_mode=resolved_data_mode)
+        model, _, _ = _build_initialized_model(resolved_data_mode)
+        model.user_model.load_weights(ARTIFACT_DIR / "user_tower.weights.h5")
+        model.item_model.load_weights(ARTIFACT_DIR / "item_tower.weights.h5")
     return model, metadata
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=20)
+    parser.add_argument("--data-mode", type=str, default=None)
     args = parser.parse_args()
-    print(json.dumps(train_and_save(epochs=args.epochs), ensure_ascii=False, indent=2))
+    print(json.dumps(train_and_save(epochs=args.epochs, data_mode=args.data_mode), ensure_ascii=False, indent=2))

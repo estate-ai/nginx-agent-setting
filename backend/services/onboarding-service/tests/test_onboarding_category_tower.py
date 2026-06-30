@@ -20,7 +20,7 @@ class OnboardingCategoryTowerTestCase(unittest.TestCase):
     def setUpClass(cls) -> None:
         """테스트 시작 전에 경량 학습으로 업종 추천 artifact를 맞춘다."""
 
-        cls.metadata = train_runtime(epochs=2)
+        cls.metadata = train_runtime(epochs=2, data_mode="sample")
 
     def test_training_metadata_contains_expected_fields(self) -> None:
         """학습 결과 메타데이터는 이후 API 연결에 필요한 핵심 필드를 포함해야 한다."""

@@ -330,6 +330,6 @@ def load_model(data_mode: str | None = None) -> tuple[Any, dict[str, Any]]:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=24)
-    parser.add_argument("--data-mode", type=str, default="sample")
+    parser.add_argument("--data-mode", type=str, default=None)
     args = parser.parse_args()
     print(json.dumps(train_and_save(epochs=args.epochs, data_mode=args.data_mode), ensure_ascii=False, indent=2))

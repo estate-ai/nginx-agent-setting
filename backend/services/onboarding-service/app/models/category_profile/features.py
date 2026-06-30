@@ -306,7 +306,19 @@ def load_activity_category_features(path: Path) -> pd.DataFrame:
     return frame.reset_index(drop=True)
 
 
-def build_category_profiles(data_mode: str = "sample", trainable_only: bool = False) -> pd.DataFrame:
+def _add_startup_cost_proxy(category: pd.DataFrame) -> pd.DataFrame:
+    cost_score = _minmax(
+        0.35 * _minmax(np.log1p(category["sales_per_area"]))
+        + 0.25 * category["labor_intensity_score"]
+        + 0.20 * _minmax(np.log1p(category["employees_per_store"]))
+        + 0.10 * _minmax(np.log1p(category["activity_store_count"]))
+        + 0.10 * category["space_efficiency_score"]
+    ).fillna(0)
+    category["startup_cost_million_krw_proxy"] = (50.0 + (270.0 * cost_score)).round(2)
+    return category
+
+
+def build_category_profiles(data_mode: str = "raw", trainable_only: bool = False) -> pd.DataFrame:
     sales = load_sales_category_features(_resolve_sales_path(data_mode))
     stores = load_store_category_features(_resolve_store_path(data_mode))
     activity = load_activity_category_features(_resolve_activity_path(data_mode))
@@ -415,6 +427,7 @@ def build_category_profiles(data_mode: str = "sample", trainable_only: bool = Fa
     category["labor_intensity_score"] = _minmax(
         0.65 * category["employees_per_area_score"] + 0.35 * category["employees_per_store_score"]
     ).fillna(0)
+    category = _add_startup_cost_proxy(category)
 
     category["sales_observed_flag"] = category["sales_observed_flag"].clip(0, 1)
     category["store_observed_flag"] = category["store_observed_flag"].clip(0, 1)
@@ -434,7 +447,7 @@ def build_category_profiles(data_mode: str = "sample", trainable_only: bool = Fa
     return category.sort_values(["service_category_code"]).reset_index(drop=True)
 
 
-def category_options(data_mode: str = "sample", trainable_only: bool = True) -> list[dict[str, str]]:
+def category_options(data_mode: str = "raw", trainable_only: bool = True) -> list[dict[str, str]]:
     frame = build_category_profiles(data_mode=data_mode, trainable_only=trainable_only)
     return [
         {

@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+from functools import lru_cache
 from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
+from app.core.config import settings
+from app.models.category_profile.features import build_category_profiles
 from app.models.onboarding_category_tower.contracts import (
     CategoryRecommendation,
     CategoryUserProfilePayload,
@@ -21,7 +24,6 @@ from app.models.onboarding_category_tower.runtime import (
 from app.models.onboarding_category_tower.user_profiles import (
     USER_NUMERIC_FIELDS as CATEGORY_USER_NUMERIC_FIELDS,
 )
-from app.models.onboarding_two_tower.user_profiles import CATEGORY_OPTIONS
 from app.models.onboarding_two_tower.user_profiles import (
     USER_NUMERIC_FIELDS as AREA_USER_NUMERIC_FIELDS,
 )
@@ -72,13 +74,18 @@ AGE_FIELD_NAMES = [
     "target_age_40_level",
     "target_age_50_plus_level",
 ]
-_CATEGORY_CODES = {option["code"] for option in CATEGORY_OPTIONS}
 
 definition_repository = SurveyDefinitionRepository()
 result_repository = SurveyResultRepository()
 category_prediction_cache_repository = CategoryPredictionCacheRepository()
 default_profile_repository = UserDefaultProfileRepository()
 saved_result_repository = UserSavedResultRepository()
+
+
+@lru_cache(maxsize=None)
+def _category_codes_for_data_mode(data_mode: str) -> frozenset[str]:
+    frame = build_category_profiles(data_mode=data_mode.strip().lower(), trainable_only=True)
+    return frozenset(frame["service_category_code"].astype(str))
 
 
 def _build_definition_summary(record: Any) -> SurveyDefinitionSummary:
@@ -642,23 +649,28 @@ async def get_area_recommendations_by_result_code(
     selected_category_code: str,
     top_k: int = DEFAULT_AREA_TOP_K,
 ) -> SurveyAreaRecommendationResponse:
-    if selected_category_code not in _CATEGORY_CODES:
+    normalized_category_code = selected_category_code.strip().upper()
+    category_codes = await run_in_threadpool(
+        _category_codes_for_data_mode,
+        settings.category_data_mode,
+    )
+    if normalized_category_code not in category_codes:
         raise HTTPException(status_code=422, detail="선택한 업종 코드가 현재 카탈로그에 없다.")
 
     result_record = await _resolve_result_record_by_code(session, result_code)
     area_profile_payload = dict(result_record.area_user_profile_json)
-    area_profile_payload["preferred_category_code"] = selected_category_code
+    area_profile_payload["preferred_category_code"] = normalized_category_code
     prediction = await resolve_area_prediction(
         session=session,
         area_profile_key=result_record.area_profile_key,
         user_profile=area_profile_payload,
-        selected_category_code=selected_category_code,
+        selected_category_code=normalized_category_code,
         top_k=top_k,
     )
     await session.commit()
     return SurveyAreaRecommendationResponse(
         result_code=result_record.result_code,
-        selected_category_code=selected_category_code,
+        selected_category_code=normalized_category_code,
         share_path=build_share_path(result_record.result_code),
         share_url=build_share_url(result_record.result_code),
         prediction=prediction,

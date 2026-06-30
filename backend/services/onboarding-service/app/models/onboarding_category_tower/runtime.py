@@ -22,7 +22,7 @@ def _runtime_data_mode(metadata: dict[str, Any]) -> str:
 def get_runtime() -> tuple[Any, dict[str, Any]]:
     global _RUNTIME_MODEL, _RUNTIME_METADATA
     if _RUNTIME_MODEL is None or _RUNTIME_METADATA is None:
-        _RUNTIME_MODEL, _RUNTIME_METADATA = load_model()
+        _RUNTIME_MODEL, _RUNTIME_METADATA = load_model(data_mode=settings.category_data_mode)
     return _RUNTIME_MODEL, _RUNTIME_METADATA
 
 

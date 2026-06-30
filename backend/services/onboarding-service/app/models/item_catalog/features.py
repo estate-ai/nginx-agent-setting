@@ -6,11 +6,13 @@ import numpy as np
 import pandas as pd
 
 from app.models.category_opportunity_score.features import build_frame as build_category_frame
+from app.models.category_profile.features import build_category_profiles
 from app.models.demand_gap_detector.features import build_frame as build_gap_frame
 from app.models.sales_momentum_forecast.features import build_frame as build_momentum_frame
-from app.models.subway_commercial_trend_score.features import read_csv_auto
+from app.models.subway_commercial_trend_score.features import find_csv_by_columns, read_csv_auto
 
 SERVICE_ROOT = Path(__file__).resolve().parents[3]
+RAW_DIR = SERVICE_ROOT / ".raw"
 RESIDENT_SAMPLE = SERVICE_ROOT / ".sample" / "resident_population_hdong.sample.csv"
 WORKER_SAMPLE = SERVICE_ROOT / ".sample" / "working_population_hdong.sample.csv"
 LIVING_SAMPLE = SERVICE_ROOT / ".sample" / "living_population_hdong_domestic.sample.csv"
@@ -18,17 +20,58 @@ CONSUMPTION_SAMPLE = SERVICE_ROOT / ".sample" / "consumption_hdong.sample.csv"
 APARTMENT_SAMPLE = SERVICE_ROOT / ".sample" / "apartment_hdong.sample.csv"
 FACILITIES_SAMPLE = SERVICE_ROOT / ".sample" / "attraction_facilities_hdong.sample.csv"
 
-CATEGORY_COST = {
-    "CS100001": 140.0,
-    "CS100003": 160.0,
-    "CS100004": 190.0,
-    "CS100005": 45.0,
-    "CS100007": 120.0,
-}
+
+def _resolve_area_path(data_mode: str, sample_path: Path, required_columns: set[str]) -> Path:
+    if data_mode == "sample":
+        return sample_path
+    if data_mode == "raw":
+        return find_csv_by_columns(RAW_DIR, required_columns)
+    raise ValueError("data_mode must be 'sample' or 'raw'")
 
 
-def _build_area_features() -> pd.DataFrame:
-    resident = read_csv_auto(RESIDENT_SAMPLE)[
+def _empty_area_metric(column_name: str) -> pd.DataFrame:
+    return pd.DataFrame({"area_code": pd.Series(dtype="str"), column_name: pd.Series(dtype="float64")})
+
+
+def _load_apartment_features(data_mode: str) -> pd.DataFrame:
+    if data_mode == "sample":
+        apartment_path = APARTMENT_SAMPLE
+    else:
+        try:
+            apartment_path = find_csv_by_columns(RAW_DIR, {"행정동_코드", "아파트_평균_시가"})
+        except FileNotFoundError:
+            return _empty_area_metric("apartment_average_price")
+
+    apartment = read_csv_auto(apartment_path)
+    if {"행정동_코드", "아파트_평균_시가"} - set(apartment.columns):
+        return _empty_area_metric("apartment_average_price")
+
+    apartment = apartment[["행정동_코드", "아파트_평균_시가"]].copy()
+    apartment.columns = ["area_code", "apartment_average_price"]
+    apartment["area_code"] = apartment["area_code"].astype(str)
+    apartment["apartment_average_price"] = pd.to_numeric(
+        apartment["apartment_average_price"],
+        errors="coerce",
+    ).fillna(0)
+    return apartment.groupby("area_code", as_index=False).agg(
+        apartment_average_price=("apartment_average_price", "mean")
+    )
+
+
+def _build_startup_cost_features(data_mode: str) -> pd.DataFrame:
+    category = build_category_profiles(data_mode=data_mode, trainable_only=False)
+    return category[
+        [
+            "service_category_code",
+            "startup_cost_million_krw_proxy",
+        ]
+    ].copy()
+
+
+def _build_area_features(data_mode: str) -> pd.DataFrame:
+    resident = read_csv_auto(
+        _resolve_area_path(data_mode, RESIDENT_SAMPLE, {"행정동_코드", "행정동_코드_명", "총_상주인구_수"})
+    )[
         ["행정동_코드", "행정동_코드_명", "총_상주인구_수"]
     ].copy()
     resident.columns = ["area_code", "area_name", "resident_population"]
@@ -42,7 +85,9 @@ def _build_area_features() -> pd.DataFrame:
         resident_population=("resident_population", "mean"),
     )
 
-    worker = read_csv_auto(WORKER_SAMPLE)[["행정동_코드", "총_직장_인구_수"]].copy()
+    worker = read_csv_auto(
+        _resolve_area_path(data_mode, WORKER_SAMPLE, {"행정동_코드", "총_직장_인구_수"})
+    )[["행정동_코드", "총_직장_인구_수"]].copy()
     worker.columns = ["area_code", "worker_population"]
     worker["area_code"] = worker["area_code"].astype(str)
     worker["worker_population"] = pd.to_numeric(
@@ -53,7 +98,10 @@ def _build_area_features() -> pd.DataFrame:
         worker_population=("worker_population", "mean")
     )
 
-    living = read_csv_auto(LIVING_SAMPLE, index_col=False)[["행정동코드", "총생활인구수"]].copy()
+    living = read_csv_auto(
+        _resolve_area_path(data_mode, LIVING_SAMPLE, {"행정동코드", "총생활인구수"}),
+        index_col=False,
+    )[["행정동코드", "총생활인구수"]].copy()
     living.columns = ["area_code", "living_population"]
     living["area_code"] = living["area_code"].astype(str)
     living["living_population"] = pd.to_numeric(
@@ -64,7 +112,9 @@ def _build_area_features() -> pd.DataFrame:
         living_population=("living_population", "mean")
     )
 
-    consumption = read_csv_auto(CONSUMPTION_SAMPLE)[
+    consumption = read_csv_auto(
+        _resolve_area_path(data_mode, CONSUMPTION_SAMPLE, {"행정동_코드", "지출_총금액", "음식_지출_총금액"})
+    )[
         ["행정동_코드", "지출_총금액", "음식_지출_총금액"]
     ].copy()
     consumption.columns = ["area_code", "consumption_total", "food_consumption_total"]
@@ -85,18 +135,11 @@ def _build_area_features() -> pd.DataFrame:
         "consumption_total"
     ].replace(0, np.nan)
 
-    apartment = read_csv_auto(APARTMENT_SAMPLE)[["행정동_코드", "아파트_평균_시가"]].copy()
-    apartment.columns = ["area_code", "apartment_average_price"]
-    apartment["area_code"] = apartment["area_code"].astype(str)
-    apartment["apartment_average_price"] = pd.to_numeric(
-        apartment["apartment_average_price"],
-        errors="coerce",
-    ).fillna(0)
-    apartment = apartment.groupby("area_code", as_index=False).agg(
-        apartment_average_price=("apartment_average_price", "mean")
-    )
+    apartment = _load_apartment_features(data_mode)
 
-    facilities = read_csv_auto(FACILITIES_SAMPLE)[["행정동_코드", "집객시설_수", "지하철_역_수"]].copy()
+    facilities = read_csv_auto(
+        _resolve_area_path(data_mode, FACILITIES_SAMPLE, {"행정동_코드", "집객시설_수", "지하철_역_수"})
+    )[["행정동_코드", "집객시설_수", "지하철_역_수"]].copy()
     facilities.columns = ["area_code", "attraction_facility_count", "subway_station_count"]
     facilities["area_code"] = facilities["area_code"].astype(str)
     facilities["attraction_facility_count"] = pd.to_numeric(
@@ -154,7 +197,7 @@ def _build_area_features() -> pd.DataFrame:
     return area.fillna(0)
 
 
-def build_item_features(data_mode: str = "sample") -> pd.DataFrame:
+def build_item_features(data_mode: str = "raw") -> pd.DataFrame:
     category = build_category_frame(data_mode)
     momentum = build_momentum_frame(data_mode)[
         ["quarter_code", "area_code", "service_category_code", "trend_label"]
@@ -172,7 +215,7 @@ def build_item_features(data_mode: str = "sample") -> pd.DataFrame:
         on=["quarter_code", "area_code", "service_category_code"],
         how="left",
     )
-    items = items.merge(_build_area_features(), on=["area_code"], how="left", suffixes=("", "_area"))
+    items = items.merge(_build_area_features(data_mode), on=["area_code"], how="left", suffixes=("", "_area"))
     if "area_name_area" in items.columns:
         items["area_name"] = items["area_name"].fillna(items["area_name_area"])
     items["item_id"] = items["area_code"].astype(str) + ":" + items["service_category_code"].astype(str)
@@ -181,7 +224,9 @@ def build_item_features(data_mode: str = "sample") -> pd.DataFrame:
     items["subway_commercial_trend_score"] = items["target_score"]
     items["category_opportunity_score"] = items["opportunity_score"]
     items["demand_gap_score"] = items["gap_score"]
-    items["startup_cost_million_krw_proxy"] = items["service_category_code"].map(CATEGORY_COST).fillna(120.0)
+    items = items.merge(_build_startup_cost_features(data_mode), on="service_category_code", how="left")
+    fallback_startup_cost = float(items["startup_cost_million_krw_proxy"].median())
+    items["startup_cost_million_krw_proxy"] = items["startup_cost_million_krw_proxy"].fillna(fallback_startup_cost)
     items["subway_coverage_level"] = np.select(
         [
             (items["subway_station_count"] >= 2) & (items["subway_commercial_trend_score"] >= 0.55),

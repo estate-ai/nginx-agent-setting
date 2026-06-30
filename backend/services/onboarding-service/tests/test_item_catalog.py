@@ -21,6 +21,16 @@ class ItemCatalogTestCase(unittest.TestCase):
             catalog.columns.tolist(),
         )
 
+    def test_raw_catalog_uses_dynamic_category_cost_proxy(self) -> None:
+        """raw 카탈로그는 편의점 후보와 동적 창업 비용 프록시를 포함해야 한다."""
+
+        catalog = build_item_features(data_mode="raw")
+        convenience_items = catalog[catalog["service_category_code"] == "CS300002"]
+
+        self.assertFalse(convenience_items.empty)
+        self.assertIn("startup_cost_million_krw_proxy", catalog.columns.tolist())
+        self.assertGreater(float(convenience_items.iloc[0]["startup_cost_million_krw_proxy"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
