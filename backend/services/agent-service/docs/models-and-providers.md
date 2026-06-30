@@ -20,7 +20,7 @@ class ChatModelCard:
     routes: tuple[ChatModelRoute, ...]
     supported_reasoning_efforts: tuple[ReasoningEffort, ...]
     default_reasoning_effort: ReasoningEffort
-    fallback_retry_delay_seconds: float = 10.0
+    fallback_retry_delay_seconds: float = 0.5
     created: int = 0
     object: str = "model"
 ```
@@ -46,7 +46,7 @@ deepseek-v4-flash
   default_reasoning_effort: high
 ```
 
-`fallback_retry_delay_seconds`는 카드 기본값 10초다.  
+`fallback_retry_delay_seconds`는 카드 기본값 0.5초다.  
 route 순서는 `routes` 튜플 순서를 그대로 쓴다.
 
 ## `list_chat_models()`

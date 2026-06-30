@@ -409,7 +409,7 @@ deepseek-v4-flash
   -> openrouter
 ```
 
-`fallback_retry_delay_seconds` 기본값은 `10.0`이다. 모든 route가 실패하면 첫 번째 에러를 다시 던진다.
+`fallback_retry_delay_seconds` 기본값은 `0.5`이다. 모든 route가 실패하면 첫 번째 에러를 다시 던진다.
 
 ## 주요 파일
 

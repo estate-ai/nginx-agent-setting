@@ -4,7 +4,7 @@ from typing import Literal
 from agent.schemas.chat import ChatModelInfo, ReasoningEffort
 
 
-ChatModelProvider = Literal["ollama", "google", "opencode_zen", "openrouter"]
+ChatModelProvider = Literal["ollama", "cerebras", "google", "opencode_zen", "openrouter"]
 
 
 class ChatModelNotFoundError(ValueError):
@@ -25,7 +25,7 @@ class ChatModelCard:
     routes: tuple[ChatModelRoute, ...]
     supported_reasoning_efforts: tuple[ReasoningEffort, ...]
     default_reasoning_effort: ReasoningEffort
-    fallback_retry_delay_seconds: float = 10.0
+    fallback_retry_delay_seconds: float = 0.5
     created: int = 0
     object: str = "model"
 
@@ -46,6 +46,11 @@ CHAT_MODEL_CARDS: tuple[ChatModelCard, ...] = (
             ChatModelRoute(
                 provider="ollama",
                 langchain_model="gpt-oss:120b",
+                context_window=128000,
+            ),
+            ChatModelRoute(
+                provider="cerebras",
+                langchain_model="gpt-oss-120b",
                 context_window=128000,
             ),
         ),

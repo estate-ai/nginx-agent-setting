@@ -420,6 +420,8 @@ services:
       SEARXNG_API_KEY: ${SEARXNG_API_KEY:-}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-https://ollama.com}
+      CEREBRAS_API_KEY: ${CEREBRAS_API_KEY:-}
+      CEREBRAS_BASE_URL: ${CEREBRAS_BASE_URL:-https://api.cerebras.ai/v1}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       OPENCODE_ZEN_API_KEY: ${OPENCODE_ZEN_API_KEY:-}

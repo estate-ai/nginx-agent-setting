@@ -2,6 +2,7 @@ from typing import Any
 
 from agent.schemas.chat import ReasoningEffort
 from agent.services.chat.model_cards import ChatModelCard, ChatModelRoute
+from agent.services.chat.providers.cerebras import create_cerebras_chat_model
 from agent.services.chat.providers.google import create_google_chat_model
 from agent.services.chat.providers.ollama import create_ollama_chat_model
 from agent.services.chat.providers.opencode_zen import create_opencode_zen_chat_model
@@ -25,6 +26,9 @@ def assert_supported_reasoning_effort(
 def create_chat_model_for_route(route: ChatModelRoute, reasoning_effort: ReasoningEffort) -> Any:
     if route.provider == "ollama":
         return create_ollama_chat_model(route=route, reasoning_effort=reasoning_effort)
+
+    if route.provider == "cerebras":
+        return create_cerebras_chat_model(route=route, reasoning_effort=reasoning_effort)
 
     if route.provider == "google":
         return create_google_chat_model(route=route, reasoning_effort=reasoning_effort)

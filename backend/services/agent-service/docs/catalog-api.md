@@ -76,7 +76,7 @@ class ChatModelCard:
     routes: tuple[ChatModelRoute, ...]
     supported_reasoning_efforts: tuple[ReasoningEffort, ...]
     default_reasoning_effort: ReasoningEffort
-    fallback_retry_delay_seconds: float = 10.0
+    fallback_retry_delay_seconds: float = 0.5
     created: int = 0
     object: str = "model"
 ```

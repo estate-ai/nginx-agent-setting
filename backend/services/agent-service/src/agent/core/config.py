@@ -13,6 +13,8 @@ class Settings(BaseSettings):
 
     ollama_api_key: str | None = None
     ollama_base_url: str = "https://ollama.com"
+    cerebras_api_key: str | None = None
+    cerebras_base_url: str = "https://api.cerebras.ai/v1"
     openrouter_api_key: str | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     opencode_zen_api_key: str | None = None
