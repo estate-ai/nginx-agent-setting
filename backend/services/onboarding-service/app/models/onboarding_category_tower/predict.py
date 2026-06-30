@@ -23,12 +23,14 @@ from app.models.onboarding_category_tower.train import (
     resolve_data_mode,
 )
 from app.models.onboarding_category_tower.user_profiles import sample_user_profiles
+from app.models.score_calibration import scale_scores_to_unit_interval
 
 
-def _scale_scores_to_unit_interval(scores: np.ndarray) -> np.ndarray:
-    clipped = np.clip(scores.astype(np.float64), -12.0, 12.0)
-    scaled = 1.0 / (1.0 + np.exp(-clipped))
-    return np.clip(scaled, 1e-6, 1.0 - 1e-6).astype(np.float32)
+def _scale_scores_to_unit_interval(
+    scores: np.ndarray,
+    calibration: dict[str, Any] | None = None,
+) -> np.ndarray:
+    return scale_scores_to_unit_interval(scores, calibration)
 
 
 def _unit_interval(value: Any) -> float:
@@ -82,7 +84,7 @@ def predict_with_runtime(
     item_embeddings = model.item_model(item_tensors)
     user_embedding = model.user_model(user_tensors)
     raw_scores = tf.linalg.matmul(user_embedding, item_embeddings, transpose_b=True)[0].numpy()
-    scaled_scores = _scale_scores_to_unit_interval(raw_scores)
+    scaled_scores = _scale_scores_to_unit_interval(raw_scores, metadata.get("score_calibration"))
     ranked_indices = np.argsort(raw_scores)[::-1][:top_k]
 
     recommendations: list[dict[str, Any]] = []

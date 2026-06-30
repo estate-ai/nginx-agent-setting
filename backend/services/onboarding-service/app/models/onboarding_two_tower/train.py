@@ -22,6 +22,7 @@ from app.models.onboarding_two_tower.user_profiles import (
 )
 from app.core.config import settings
 from app.models.item_catalog.features import build_item_features
+from app.models.score_calibration import build_score_calibration
 
 SERVICE_ROOT = Path(__file__).resolve().parents[3]
 ARTIFACT_DIR = SERVICE_ROOT / ".artifacts" / "onboarding_two_tower"
@@ -309,6 +310,7 @@ def train_and_save(epochs: int = 20, data_mode: str | None = None) -> dict[str, 
         "final_loss": round(float(history.history["loss"][-1]), 6),
         "hit_rate_at_3": round(hit_count / len(users), 6),
         "mrr": round(float(np.mean(reciprocal_ranks)), 6),
+        "score_calibration": build_score_calibration(scores),
         "user_tower_feature_scale": USER_TOWER_FEATURE_SCALE,
         "artifact_paths": {
             "user_tower": ".artifacts/onboarding_two_tower/user_tower.weights.h5",

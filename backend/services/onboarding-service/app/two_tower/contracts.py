@@ -28,12 +28,12 @@ class AreaUserProfilePayload(BaseModel):
     rent_sensitivity_level: float = Field(default=0.5, ge=0, le=1, description="임대료 민감도")
     competition_tolerance_level: float = Field(default=0.5, ge=0, le=1, description="경쟁 허용도")
 
-    @field_validator(*USER_TOWER_SCORE_FIELDS, mode="after")
+    @field_validator(*USER_TOWER_SCORE_FIELDS, mode="before")
     @classmethod
     def round_score(cls, value: float) -> float:
         """공유 코드와 캐시 키가 흔들리지 않도록 0.01 단위로 맞춘다."""
 
-        return round(float(value), 2)
+        return round(max(0.0, min(1.0, float(value))), 2)
 
 
 class UserProfilePayload(AreaUserProfilePayload):

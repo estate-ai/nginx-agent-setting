@@ -64,11 +64,30 @@ class OnboardingCategoryTowerTestCase(unittest.TestCase):
     def test_score_scaling_does_not_depend_on_other_candidates(self) -> None:
         """같은 raw score는 다른 후보가 섞여도 같은 0~1 점수로 매핑돼야 한다."""
 
-        full_scores = _scale_scores_to_unit_interval(np.array([2.0, 1.0, -1.0], dtype=np.float32))
-        partial_scores = _scale_scores_to_unit_interval(np.array([2.0, -1.0], dtype=np.float32))
+        calibration = {"center": 0.0, "scale": 4.0}
+        full_scores = _scale_scores_to_unit_interval(
+            np.array([2.0, 1.0, -1.0], dtype=np.float32),
+            calibration,
+        )
+        partial_scores = _scale_scores_to_unit_interval(
+            np.array([2.0, -1.0], dtype=np.float32),
+            calibration,
+        )
 
         self.assertAlmostEqual(float(full_scores[0]), float(partial_scores[0]), places=6)
         self.assertAlmostEqual(float(full_scores[2]), float(partial_scores[1]), places=6)
+
+    def test_score_scaling_uses_calibration_to_avoid_saturation(self) -> None:
+        """학습 score 분포 보정값이 있으면 큰 raw score도 0/1로 포화되지 않아야 한다."""
+
+        scaled_scores = _scale_scores_to_unit_interval(
+            np.array([-100.0, 0.0, 100.0], dtype=np.float32),
+            {"center": 0.0, "scale": 50.0},
+        )
+
+        self.assertGreater(float(scaled_scores[0]), 0.1)
+        self.assertAlmostEqual(float(scaled_scores[1]), 0.5, places=6)
+        self.assertLess(float(scaled_scores[2]), 0.9)
 
     def test_build_user_prototype_clamps_out_of_range_category_scores(self) -> None:
         """raw 집계값이 0~1 범위를 넘어도 프로토타입 생성은 validation 에러 없이 clamp 해야 한다."""

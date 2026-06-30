@@ -19,12 +19,15 @@ from app.models.onboarding_two_tower.train import (
 )
 from app.models.onboarding_two_tower.user_profiles import load_user_profiles
 from app.models.item_catalog.features import build_item_features
+from app.models.score_calibration import scale_scores_to_unit_interval
+from app.two_tower.contracts import UserProfilePayload
 
 
-def _scale_scores_to_unit_interval(scores: np.ndarray) -> np.ndarray:
-    clipped = np.clip(scores.astype(np.float64), -12.0, 12.0)
-    scaled = 1.0 / (1.0 + np.exp(-clipped))
-    return np.clip(scaled, 1e-6, 1.0 - 1e-6).astype(np.float32)
+def _scale_scores_to_unit_interval(
+    scores: np.ndarray,
+    calibration: dict[str, Any] | None = None,
+) -> np.ndarray:
+    return scale_scores_to_unit_interval(scores, calibration)
 
 
 def _resolve_user_profile(payload: dict[str, Any], data_mode: str) -> pd.DataFrame:
@@ -47,7 +50,8 @@ def _resolve_user_profile(payload: dict[str, Any], data_mode: str) -> pd.DataFra
     for field, value in payload.items():
         if value is not None:
             base.at[0, field] = value
-    return base
+    validated = UserProfilePayload.model_validate(base.iloc[0].to_dict())
+    return pd.DataFrame([validated.model_dump()])
 
 
 def predict_with_runtime(
@@ -89,7 +93,7 @@ def predict_with_runtime(
     item_embeddings = model.item_model(item_tensors)
     user_embedding = model.user_model(user_tensors)
     raw_scores = tf.linalg.matmul(user_embedding, item_embeddings, transpose_b=True)[0].numpy()
-    scaled_scores = _scale_scores_to_unit_interval(raw_scores)
+    scaled_scores = _scale_scores_to_unit_interval(raw_scores, metadata.get("score_calibration"))
     ranked_indices = np.argsort(raw_scores)[::-1][:top_k]
 
     recommendations: list[dict[str, object]] = []

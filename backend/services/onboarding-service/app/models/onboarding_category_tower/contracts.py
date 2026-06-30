@@ -45,12 +45,12 @@ class CategoryUserProfilePayload(BaseModel):
     labor_intensity_tolerance: float = Field(default=0.5, ge=0, le=1, description="인력 집약도 감수도")
     space_efficiency_preference: float = Field(default=0.5, ge=0, le=1, description="면적 효율형 업종 선호도")
 
-    @field_validator(*CATEGORY_USER_SCORE_FIELDS, mode="after")
+    @field_validator(*CATEGORY_USER_SCORE_FIELDS, mode="before")
     @classmethod
     def round_score(cls, value: float) -> float:
         """저장과 캐시 키가 흔들리지 않도록 0.01 단위로 맞춘다."""
 
-        return round(float(value), 2)
+        return round(max(0.0, min(1.0, float(value))), 2)
 
 
 class CategoryRecommendation(BaseModel):

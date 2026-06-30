@@ -20,6 +20,7 @@ from app.models.category_profile.features import (
     build_category_profiles,
 )
 from app.core.config import settings
+from app.models.score_calibration import build_score_calibration
 from app.models.onboarding_category_tower.user_profiles import (
     SYNTHETIC_VARIANTS_PER_CATEGORY,
     USER_NUMERIC_FIELDS,
@@ -226,6 +227,11 @@ def train_and_save(epochs: int = 24, data_mode: str | None = None) -> dict[str, 
     item_embeddings = model.item_model(
         {name: tf.convert_to_tensor(value) for name, value in item_input.items()}
     ).numpy()
+    user_input = _tensor_dict(users, USER_NUMERIC_FIELDS)
+    user_embeddings = model.user_model(
+        {name: tf.convert_to_tensor(value) for name, value in user_input.items()}
+    ).numpy()
+    scores = user_embeddings @ item_embeddings.T
     hit_rate_at_3, mrr = _evaluate_model(model, items, eval_users)
 
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
@@ -255,6 +261,7 @@ def train_and_save(epochs: int = 24, data_mode: str | None = None) -> dict[str, 
         "final_loss": round(float(history.history["loss"][-1]), 6),
         "hit_rate_at_3": hit_rate_at_3,
         "mrr": mrr,
+        "score_calibration": build_score_calibration(scores),
         "user_tower_feature_scale": USER_TOWER_FEATURE_SCALE,
         "artifact_paths": {
             "user_tower": ".artifacts/onboarding_category_tower/user_tower.weights.h5",

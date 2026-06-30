@@ -66,7 +66,8 @@ DEFAULT_EFFECT_WEIGHT = 0.5
 NEUTRAL_USER_TOWER_SCORE = 0.5
 DEFAULT_CATEGORY_TOP_K = 20
 DEFAULT_AREA_TOP_K = 5
-CATEGORY_RECOMMENDATION_SCORE_SCALE = "category_sigmoid_zero_to_one_v1"
+CATEGORY_RECOMMENDATION_SCORE_SCALE = "category_robust_sigmoid_quantile_v1"
+PROFILE_SCORE_EXTREME_MARGIN = 0.05
 AGE_FIELD_NAMES = [
     "target_age_10_level",
     "target_age_20_level",
@@ -204,20 +205,42 @@ def _score_question_effects(
 
 
 def _normalize_age_distribution(payload: dict[str, Any]) -> dict[str, Any]:
-    total = sum(float(payload[field_name]) for field_name in AGE_FIELD_NAMES)
+    values = [max(0.0, min(1.0, float(payload[field_name]))) for field_name in AGE_FIELD_NAMES]
+    total = sum(values)
     if total <= 0:
-        for field_name in AGE_FIELD_NAMES:
-            payload[field_name] = round(1 / len(AGE_FIELD_NAMES), 2)
+        cents = [100 // len(AGE_FIELD_NAMES)] * len(AGE_FIELD_NAMES)
+        for index in range(100 - sum(cents)):
+            cents[index] += 1
+        for field_name, value in zip(AGE_FIELD_NAMES, cents, strict=True):
+            payload[field_name] = round(value / 100, 2)
         return payload
 
-    normalized_values: list[float] = []
-    for field_name in AGE_FIELD_NAMES[:-1]:
-        normalized_values.append(round(float(payload[field_name]) / total, 2))
-    normalized_values.append(round(1.0 - sum(normalized_values), 2))
+    exact_cents = [(value / total) * 100 for value in values]
+    cents = [int(value) for value in exact_cents]
+    remainder = 100 - sum(cents)
+    order = sorted(
+        range(len(exact_cents)),
+        key=lambda index: exact_cents[index] - cents[index],
+        reverse=True,
+    )
+    for index in order[:remainder]:
+        cents[index] += 1
 
-    for field_name, normalized_value in zip(AGE_FIELD_NAMES, normalized_values, strict=True):
-        payload[field_name] = normalized_value
+    for field_name, value in zip(AGE_FIELD_NAMES, cents, strict=True):
+        payload[field_name] = round(value / 100, 2)
     return payload
+
+
+def _unit_interval(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))
+
+
+def _profile_score(total: float, weight: float) -> float:
+    if weight <= 0:
+        return NEUTRAL_USER_TOWER_SCORE
+    raw_score = _unit_interval(total / weight)
+    softened = PROFILE_SCORE_EXTREME_MARGIN + raw_score * (1.0 - (PROFILE_SCORE_EXTREME_MARGIN * 2.0))
+    return round(softened, 2)
 
 
 def _score_definition(
@@ -260,7 +283,7 @@ def _score_definition(
         if area_score_weights[field_name] <= 0:
             area_payload[field_name] = NEUTRAL_USER_TOWER_SCORE
         else:
-            area_payload[field_name] = round(area_score_totals[field_name] / area_score_weights[field_name], 2)
+            area_payload[field_name] = _profile_score(area_score_totals[field_name], area_score_weights[field_name])
 
     category_payload: dict[str, Any] = {
         "user_id": f"survey_{definition.survey_code.lower()}_category",
@@ -269,7 +292,7 @@ def _score_definition(
     for field_name in CATEGORY_USER_NUMERIC_FIELDS:
         if field_name in AGE_FIELD_NAMES:
             category_payload[field_name] = (
-                round(category_score_totals[field_name] / category_score_weights[field_name], 2)
+                round(_unit_interval(category_score_totals[field_name] / category_score_weights[field_name]), 2)
                 if category_score_weights[field_name] > 0
                 else 0.0
             )
@@ -278,9 +301,9 @@ def _score_definition(
         if category_score_weights[field_name] <= 0:
             category_payload[field_name] = NEUTRAL_USER_TOWER_SCORE
         else:
-            category_payload[field_name] = round(
-                category_score_totals[field_name] / category_score_weights[field_name],
-                2,
+            category_payload[field_name] = _profile_score(
+                category_score_totals[field_name],
+                category_score_weights[field_name],
             )
     category_payload = _normalize_age_distribution(category_payload)
 
