@@ -10,11 +10,13 @@ import type { ChatModelOption } from "@/features/chat/types/chat-model-selection
 import type {
   ArtifactResponse,
   DocumentResponse,
+  MarketFavoriteResponse,
 } from "@/shared/api/generated/agent/schemas"
 import { cn } from "@/shared/lib/utils"
 
 type ChatWorkspaceEmptyStateProps = {
   documents: DocumentResponse[]
+  marketFavorites?: MarketFavoriteResponse[]
   draft: string
   isPending?: boolean
   modelSelection: ChatModelSelectionControls
@@ -29,6 +31,7 @@ const EMPTY_ARTIFACTS: ArtifactResponse[] = []
 
 export function ChatWorkspaceEmptyState({
   documents,
+  marketFavorites = [],
   draft,
   isPending = false,
   modelSelection,
@@ -63,6 +66,7 @@ export function ChatWorkspaceEmptyState({
         <ChatWorkspaceComposer
           artifacts={EMPTY_ARTIFACTS}
           documents={documents}
+          marketFavorites={marketFavorites}
           draft={draft}
           disabled={isPending}
           models={models}

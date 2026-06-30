@@ -13,9 +13,12 @@ from agent.schemas.workspace import (
     CreateAgentThreadRequest,
     CreateArtifactRequest,
     CreateDocumentRequest,
+    CreateMarketFavoriteRequest,
     CreateMemoryRequest,
     DocumentListResponse,
     DocumentResponse,
+    MarketFavoriteListResponse,
+    MarketFavoriteResponse,
     MemoryListResponse,
     MemoryResponse,
     MessageFeedbackRequest,
@@ -35,9 +38,7 @@ router = APIRouter(prefix="/api/v1/agent")
 
 
 @router.get("/threads", response_model=AgentThreadListResponse, tags=["agent-threads"])
-async def list_threads(
-    user: CurrentApiUser, session: DbSession
-) -> AgentThreadListResponse:
+async def list_threads(user: CurrentApiUser, session: DbSession) -> AgentThreadListResponse:
     return AgentThreadListResponse(
         threads=await workspace_service.list_threads(session, user.identity)
     )
@@ -62,9 +63,7 @@ async def create_thread(
     )
 
 
-@router.patch(
-    "/threads/{thread_id}", response_model=AgentThreadResponse, tags=["agent-threads"]
-)
+@router.patch("/threads/{thread_id}", response_model=AgentThreadResponse, tags=["agent-threads"])
 async def update_thread(
     thread_id: UUID,
     body: UpdateAgentThreadRequest,
@@ -81,12 +80,8 @@ async def update_thread(
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["agent-threads"],
 )
-async def delete_thread(
-    thread_id: UUID, user: CurrentApiUser, session: DbSession
-) -> Response:
-    await workspace_service.delete_thread(
-        session, owner=user.identity, thread_id=thread_id
-    )
+async def delete_thread(thread_id: UUID, user: CurrentApiUser, session: DbSession) -> Response:
+    await workspace_service.delete_thread(session, owner=user.identity, thread_id=thread_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -98,9 +93,7 @@ async def delete_thread(
 async def get_thread_settings(
     thread_id: UUID, user: CurrentApiUser, session: DbSession
 ) -> ThreadSettingsResponse:
-    return await workspace_service.get_settings(
-        session, owner=user.identity, thread_id=thread_id
-    )
+    return await workspace_service.get_settings(session, owner=user.identity, thread_id=thread_id)
 
 
 @router.put(
@@ -120,12 +113,53 @@ async def update_thread_settings(
 
 
 @router.get("/memories", response_model=MemoryListResponse, tags=["agent-memories"])
-async def list_memories(
-    user: CurrentApiUser, session: DbSession
-) -> MemoryListResponse:
+async def list_memories(user: CurrentApiUser, session: DbSession) -> MemoryListResponse:
     return MemoryListResponse(
         memories=await workspace_service.list_memories(session, user.identity)
     )
+
+
+@router.get(
+    "/market-favorites",
+    response_model=MarketFavoriteListResponse,
+    tags=["agent-market-favorites"],
+)
+async def list_market_favorites(
+    user: CurrentApiUser, session: DbSession
+) -> MarketFavoriteListResponse:
+    return MarketFavoriteListResponse(
+        favorites=await workspace_service.list_market_favorites(session, user.identity)
+    )
+
+
+@router.post(
+    "/market-favorites",
+    response_model=MarketFavoriteResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["agent-market-favorites"],
+)
+async def upsert_market_favorite(
+    body: CreateMarketFavoriteRequest,
+    user: CurrentApiUser,
+    session: DbSession,
+) -> MarketFavoriteResponse:
+    return await workspace_service.upsert_market_favorite(
+        session, owner=user.identity, request=body
+    )
+
+
+@router.delete(
+    "/market-favorites/{dong_code}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["agent-market-favorites"],
+)
+async def delete_market_favorite(
+    dong_code: str, user: CurrentApiUser, session: DbSession
+) -> Response:
+    await workspace_service.delete_market_favorite(
+        session, owner=user.identity, dong_code=dong_code
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
@@ -137,14 +171,10 @@ async def list_memories(
 async def create_memory(
     body: CreateMemoryRequest, user: CurrentApiUser, session: DbSession
 ) -> MemoryResponse:
-    return await workspace_service.create_memory(
-        session, owner=user.identity, request=body
-    )
+    return await workspace_service.create_memory(session, owner=user.identity, request=body)
 
 
-@router.patch(
-    "/memories/{memory_id}", response_model=MemoryResponse, tags=["agent-memories"]
-)
+@router.patch("/memories/{memory_id}", response_model=MemoryResponse, tags=["agent-memories"])
 async def update_memory(
     memory_id: UUID,
     body: UpdateMemoryRequest,
@@ -161,12 +191,8 @@ async def update_memory(
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["agent-memories"],
 )
-async def delete_memory(
-    memory_id: UUID, user: CurrentApiUser, session: DbSession
-) -> Response:
-    await workspace_service.delete_memory(
-        session, owner=user.identity, memory_id=memory_id
-    )
+async def delete_memory(memory_id: UUID, user: CurrentApiUser, session: DbSession) -> Response:
+    await workspace_service.delete_memory(session, owner=user.identity, memory_id=memory_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -192,9 +218,7 @@ async def list_artifacts(
 async def create_artifact(
     body: CreateArtifactRequest, user: CurrentApiUser, session: DbSession
 ) -> ArtifactResponse:
-    return await workspace_service.create_artifact(
-        session, owner=user.identity, request=body
-    )
+    return await workspace_service.create_artifact(session, owner=user.identity, request=body)
 
 
 @router.get(
@@ -241,9 +265,7 @@ async def save_artifact_as_document(
 
 
 @router.get("/documents", response_model=DocumentListResponse, tags=["agent-documents"])
-async def list_documents(
-    user: CurrentApiUser, session: DbSession
-) -> DocumentListResponse:
+async def list_documents(user: CurrentApiUser, session: DbSession) -> DocumentListResponse:
     return DocumentListResponse(
         documents=await workspace_service.list_documents(session, user.identity)
     )
@@ -258,9 +280,7 @@ async def list_documents(
 async def create_document(
     body: CreateDocumentRequest, user: CurrentApiUser, session: DbSession
 ) -> DocumentResponse:
-    return await workspace_service.create_document(
-        session, owner=user.identity, request=body
-    )
+    return await workspace_service.create_document(session, owner=user.identity, request=body)
 
 
 @router.get(
@@ -297,12 +317,8 @@ async def update_document(
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["agent-documents"],
 )
-async def delete_document(
-    document_id: UUID, user: CurrentApiUser, session: DbSession
-) -> Response:
-    await workspace_service.delete_document(
-        session, owner=user.identity, document_id=document_id
-    )
+async def delete_document(document_id: UUID, user: CurrentApiUser, session: DbSession) -> Response:
+    await workspace_service.delete_document(session, owner=user.identity, document_id=document_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

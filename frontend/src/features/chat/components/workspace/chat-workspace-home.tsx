@@ -11,6 +11,7 @@ import { useLocalWorkspaceRuntimeSettings } from "@/features/chat/hooks/workspac
 import { useChatWorkspace } from "@/features/chat/providers/chat-workspace-provider"
 import type { ChatReasoningEffort } from "@/features/chat/types/chat-model-selection"
 import { useListDocumentsApiV1AgentDocumentsGet } from "@/shared/api/generated/agent/endpoints/agent-documents/agent-documents"
+import { useListMarketFavoritesApiV1AgentMarketFavoritesGet } from "@/shared/api/generated/agent/endpoints/agent-market-favorites/agent-market-favorites"
 import {
   getGetThreadSettingsApiV1AgentThreadsThreadIdSettingsGetQueryKey,
   getListThreadsApiV1AgentThreadsGetQueryKey,
@@ -33,10 +34,18 @@ export function ChatWorkspaceHome() {
   const selectedDocumentIds = useChatWorkspace(
     (state) => state.selectedDocumentIds
   )
+  const selectedMarketDongCodes = useChatWorkspace(
+    (state) => state.selectedMarketDongCodes
+  )
+  const selectedOnboarding = useChatWorkspace(
+    (state) => state.selectedOnboarding
+  )
   const [draft, setDraft] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const createThread = useCreateThreadApiV1AgentThreadsPost()
   const documentsQuery = useListDocumentsApiV1AgentDocumentsGet()
+  const marketFavoritesQuery =
+    useListMarketFavoritesApiV1AgentMarketFavoritesGet()
   const toolsQuery = useListLlmToolsApiV1LlmToolsGet({
     query: {
       select: (data) =>
@@ -72,6 +81,7 @@ export function ChatWorkspaceHome() {
 
   if (
     documentsQuery.isLoading ||
+    marketFavoritesQuery.isLoading ||
     toolsQuery.isLoading ||
     modelsQuery.isLoading
   ) {
@@ -138,6 +148,21 @@ export function ChatWorkspaceHome() {
       for (const artifactId of selectedArtifactIds) {
         nextSearchParams.append("artifactId", artifactId)
       }
+      for (const dongCode of selectedMarketDongCodes) {
+        nextSearchParams.append("marketDongCode", dongCode)
+      }
+      if (selectedOnboarding) {
+        nextSearchParams.set(
+          "onboardingResultCode",
+          selectedOnboarding.resultCode
+        )
+        if (selectedOnboarding.selectedCategoryCode) {
+          nextSearchParams.set(
+            "onboardingCategoryCode",
+            selectedOnboarding.selectedCategoryCode
+          )
+        }
+      }
 
       router.push(`/chat/${thread.id}?${nextSearchParams.toString()}`)
     } catch (error) {
@@ -152,6 +177,7 @@ export function ChatWorkspaceHome() {
     <ChatWorkspaceShell>
       <ChatWorkspaceEmptyState
         documents={documentsQuery.data?.documents ?? []}
+        marketFavorites={marketFavoritesQuery.data?.favorites ?? []}
         draft={draft}
         isPending={isSubmitting || createThread.isPending}
         modelSelection={runtimeControls.modelSelection}

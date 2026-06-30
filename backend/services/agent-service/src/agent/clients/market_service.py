@@ -45,5 +45,21 @@ class MarketServiceClient:
             raise RuntimeError("market-service 검색 응답 data 형식이 올바르지 않습니다.")
         return data
 
+    async def get_dong_report(
+        self,
+        *,
+        dong_code: str,
+        period: str = "latest",
+    ) -> dict[str, Any]:
+        body = await self._request(
+            "GET",
+            f"/api/v1/market-reports/dongs/{dong_code}",
+            params={"period": period},
+        )
+        data = body.get("data")
+        if not isinstance(data, dict):
+            raise RuntimeError("market-service 상권 상세 응답 data 형식이 올바르지 않습니다.")
+        return data
+
 
 market_service_client = MarketServiceClient()

@@ -1,6 +1,6 @@
 "use client"
 
-import { Fingerprint, Link2 } from "lucide-react"
+import { Fingerprint, Link2, MapPinned } from "lucide-react"
 import { MarkdownContentRenderer } from "@/features/chat/components/workspace/markdown-content-renderer"
 import {
   getDocumentIcon,
@@ -10,9 +10,12 @@ import { useChatWorkspace } from "@/features/chat/providers/chat-workspace-provi
 import type {
   ChatDetailDialogState,
   ChatOnboardingResultPreview,
+  ChatOnboardingSelection,
 } from "@/features/chat/types/workspace"
-import type { OnboardingContextResponse } from "@/shared/api/generated/agent/schemas"
-import type { DocumentResponse } from "@/shared/api/generated/agent/schemas"
+import type {
+  DocumentResponse,
+  MarketFavoriteResponse,
+} from "@/shared/api/generated/agent/schemas"
 import { useGetResultByCodeSurveysResultsResultCodeGet } from "@/shared/api/generated/onboarding/endpoints/survey/survey"
 import type {
   SurveyResultResponse,
@@ -40,7 +43,7 @@ type OnboardingResultQueryState = {
 type WorkspaceDetailDialogProps = {
   dialog: ChatDetailDialogState | null
   currentThreadId: string | null
-  currentOnboardingContext: OnboardingContextResponse | null
+  currentOnboardingSelection: ChatOnboardingSelection | null
   defaultProfile: SurveyResultResponse | null
   isOnboardingContextPending?: boolean
   onClose: () => void
@@ -50,7 +53,7 @@ type WorkspaceDetailDialogProps = {
 export function WorkspaceDetailDialog({
   dialog,
   currentThreadId,
-  currentOnboardingContext,
+  currentOnboardingSelection,
   defaultProfile,
   isOnboardingContextPending = false,
   onClose,
@@ -86,13 +89,18 @@ export function WorkspaceDetailDialog({
           <DocumentDialogBody document={dialog.document} onClose={onClose} />
         ) : dialog?.kind === "onboarding-result" ? (
           <OnboardingResultDialogBody
-            currentContext={currentOnboardingContext}
+            currentSelection={currentOnboardingSelection}
             currentThreadId={currentThreadId}
             isPending={isOnboardingContextPending}
             resultPreview={dialog.result}
             resultQuery={onboardingResultQuery}
             onClose={onClose}
             onToggleContext={onToggleOnboardingContext}
+          />
+        ) : dialog?.kind === "market-favorite" ? (
+          <MarketFavoriteDialogBody
+            favorite={dialog.favorite}
+            onClose={onClose}
           />
         ) : null}
       </DialogContent>
@@ -166,7 +174,7 @@ function DocumentDialogBody({
 }
 
 function OnboardingResultDialogBody({
-  currentContext,
+  currentSelection,
   currentThreadId,
   isPending,
   resultPreview,
@@ -174,7 +182,7 @@ function OnboardingResultDialogBody({
   onClose,
   onToggleContext,
 }: {
-  currentContext: OnboardingContextResponse | null
+  currentSelection: ChatOnboardingSelection | null
   currentThreadId: string | null
   isPending: boolean
   resultPreview: ChatOnboardingResultPreview
@@ -183,10 +191,10 @@ function OnboardingResultDialogBody({
   onToggleContext: (result: ChatOnboardingResultPreview) => void
 }) {
   const detail = resultQuery.data ?? null
-  const isAttached = currentContext?.result_code === resultPreview.resultCode
-  const canAttach = currentThreadId !== null
+  const isAttached = currentSelection?.resultCode === resultPreview.resultCode
   const selectedCategoryCode =
     detail?.category_recommendations[0]?.service_category_code ?? null
+  void currentThreadId
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -227,7 +235,7 @@ function OnboardingResultDialogBody({
             type="button"
             variant={isAttached ? "secondary" : "outline"}
             size="sm"
-            disabled={!canAttach || isPending || resultQuery.isLoading}
+            disabled={isPending || resultQuery.isLoading}
             onClick={() => {
               onToggleContext({
                 ...resultPreview,
@@ -239,11 +247,6 @@ function OnboardingResultDialogBody({
           >
             {isAttached ? "채팅에서 제거" : "채팅에 추가"}
           </Button>
-          {!canAttach && (
-            <p className="text-[11px] text-muted-foreground">
-              대화를 시작한 뒤 채팅에 추가할 수 있습니다
-            </p>
-          )}
         </div>
       </DialogHeader>
 
@@ -310,6 +313,78 @@ function OnboardingResultDialogBody({
           )}
         </div>
       </ScrollArea>
+    </div>
+  )
+}
+
+function MarketFavoriteDialogBody({
+  favorite,
+  onClose,
+}: {
+  favorite: MarketFavoriteResponse
+  onClose: () => void
+}) {
+  const selectedMarketDongCodes = useChatWorkspace(
+    (state) => state.selectedMarketDongCodes
+  )
+  const toggleMarketArea = useChatWorkspace((state) => state.toggleMarketArea)
+  const isSelected = selectedMarketDongCodes.includes(favorite.dong_code)
+
+  return (
+    <div className="flex min-h-0 flex-col">
+      <DialogHeader className="gap-2 border-b border-border/20 px-5 py-4 pr-14">
+        <div className="flex items-start gap-3">
+          <div className="rounded-full border border-border/40 bg-muted/30 p-2 text-muted-foreground">
+            <MapPinned className="size-4" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <DialogTitle className="truncate text-base">
+                {favorite.dong_name}
+              </DialogTitle>
+              {isSelected && (
+                <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                  채팅에 추가됨
+                </Badge>
+              )}
+            </div>
+            <DialogDescription className="text-xs text-muted-foreground">
+              동 코드 {favorite.dong_code}
+            </DialogDescription>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant={isSelected ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => {
+              toggleMarketArea(favorite.dong_code)
+              onClose()
+            }}
+            className="h-8 cursor-pointer text-xs"
+          >
+            {isSelected ? "채팅에서 제거" : "채팅에 추가"}
+          </Button>
+        </div>
+      </DialogHeader>
+
+      <div className="p-5">
+        <div className="rounded-xl border border-border/40 bg-muted/10 p-4">
+          <div className="flex items-center gap-2">
+            <MapPinned className="size-3.5 text-muted-foreground" />
+            <h3 className="text-sm font-semibold">상권 컨텍스트</h3>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            이 상권을 채팅에 추가하면 AI가 동 코드{" "}
+            <span className="font-mono text-foreground">
+              {favorite.dong_code}
+            </span>
+            를 바탕으로 상권 상세 도구를 호출할 수 있습니다.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

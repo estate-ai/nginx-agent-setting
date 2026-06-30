@@ -13,6 +13,7 @@ import type { ChatModelOption } from "@/features/chat/types/chat-model-selection
 import type {
   ArtifactResponse,
   DocumentResponse,
+  MarketFavoriteResponse,
 } from "@/shared/api/generated/agent/schemas"
 import { Badge } from "@/shared/components/ui/badge"
 import { Button } from "@/shared/components/ui/button"
@@ -21,6 +22,7 @@ import { cn } from "@/shared/lib/utils"
 type ChatWorkspaceComposerProps = {
   artifacts: ArtifactResponse[]
   documents: DocumentResponse[]
+  marketFavorites?: MarketFavoriteResponse[]
   draft: string
   disabled?: boolean
   inputDisabled?: boolean
@@ -40,6 +42,7 @@ type ChatWorkspaceComposerProps = {
 export function ChatWorkspaceComposer({
   artifacts,
   documents,
+  marketFavorites = [],
   draft,
   disabled = false,
   inputDisabled = false,
@@ -96,7 +99,7 @@ export function ChatWorkspaceComposer({
   }
 
   return (
-    <div className={cn("mx-auto min-w-0 max-w-2xl", compact && "w-full")}>
+    <div className={cn("mx-auto max-w-2xl min-w-0", compact && "w-full")}>
       <div
         className={cn(
           "relative rounded-xl border bg-muted/20 transition-all",
@@ -127,6 +130,7 @@ export function ChatWorkspaceComposer({
           <ChatSelectionChips
             artifacts={artifacts}
             documents={documents}
+            marketFavorites={marketFavorites}
             compact={compact}
           />
         </div>

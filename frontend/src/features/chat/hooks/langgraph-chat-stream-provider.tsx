@@ -255,6 +255,8 @@ export function LangGraphChatStreamProvider({
         workspaceThread?.appThreadId,
         options.selectedDocumentIds ?? [],
         options.selectedArtifactIds ?? [],
+        options.selectedMarketDongCodes ?? [],
+        options.selectedOnboarding ?? null,
         runtimeContext
       )
       const input = buildSubmitInput(content)
@@ -395,6 +397,8 @@ export function LangGraphChatStreamProvider({
         modelSelection,
         toolPolicy,
         workspaceThread?.appThreadId,
+        undefined,
+        undefined,
         undefined,
         undefined,
         runtimeContext

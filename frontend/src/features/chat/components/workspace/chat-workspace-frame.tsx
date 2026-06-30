@@ -5,6 +5,7 @@ import { useRouter, useSelectedLayoutSegment } from "next/navigation"
 import {
   Fingerprint,
   Folder,
+  MapPinned,
   Menu,
   MessageSquare,
   NotebookPen,
@@ -14,6 +15,7 @@ import { toast } from "sonner"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { HttpStatusError } from "@/features/auth/lib/fetch-with-auth"
 import { LibraryPanel } from "@/features/chat/components/workspace/library-panel"
+import { MarketFavoritesPanel } from "@/features/chat/components/workspace/market-favorites-panel"
 import { MemoryPanel } from "@/features/chat/components/workspace/memory-panel"
 import {
   OnboardingPanel,
@@ -25,15 +27,11 @@ import { useChatWorkspace } from "@/features/chat/providers/chat-workspace-provi
 import type {
   ChatDetailDialogPayload,
   ChatOnboardingResultPreview,
+  ChatOnboardingSelection,
 } from "@/features/chat/types/workspace"
 import { useListDocumentsApiV1AgentDocumentsGet } from "@/shared/api/generated/agent/endpoints/agent-documents/agent-documents"
+import { useListMarketFavoritesApiV1AgentMarketFavoritesGet } from "@/shared/api/generated/agent/endpoints/agent-market-favorites/agent-market-favorites"
 import { useListMemoriesApiV1AgentMemoriesGet } from "@/shared/api/generated/agent/endpoints/agent-memories/agent-memories"
-import {
-  getGetOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGetQueryKey,
-  getOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGet,
-  useDeleteOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextDelete,
-  useSetOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextPut,
-} from "@/shared/api/generated/agent/endpoints/agent-onboarding-context/agent-onboarding-context"
 import {
   getListThreadsApiV1AgentThreadsGetQueryKey,
   useDeleteThreadApiV1AgentThreadsThreadIdDelete,
@@ -77,48 +75,37 @@ export function ChatWorkspaceFrame({ children }: ChatWorkspaceFrameProps) {
   const selectedDocumentIds = useChatWorkspace(
     (state) => state.selectedDocumentIds
   )
+  const selectedMarketDongCodes = useChatWorkspace(
+    (state) => state.selectedMarketDongCodes
+  )
+  const selectedOnboarding = useChatWorkspace(
+    (state) => state.selectedOnboarding
+  )
   const setDetailDialog = useChatWorkspace((state) => state.setDetailDialog)
   const setActiveLeftTab = useChatWorkspace((state) => state.setActiveLeftTab)
   const setIsLeftSidebarOpen = useChatWorkspace(
     (state) => state.setIsLeftSidebarOpen
   )
   const toggleDocument = useChatWorkspace((state) => state.toggleDocument)
+  const toggleMarketArea = useChatWorkspace((state) => state.toggleMarketArea)
+  const setSelectedOnboarding = useChatWorkspace(
+    (state) => state.setSelectedOnboarding
+  )
   const threadsQuery = useListThreadsApiV1AgentThreadsGet()
   const documentsQuery = useListDocumentsApiV1AgentDocumentsGet()
+  const marketFavoritesQuery =
+    useListMarketFavoritesApiV1AgentMarketFavoritesGet()
   const memoriesQuery = useListMemoriesApiV1AgentMemoriesGet()
   const deleteThread = useDeleteThreadApiV1AgentThreadsThreadIdDelete()
-  const setOnboardingContext =
-    useSetOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextPut()
-  const deleteOnboardingContext =
-    useDeleteOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextDelete()
 
   const documents = documentsQuery.data?.documents ?? []
+  const marketFavorites = marketFavoritesQuery.data?.favorites ?? []
   const threads = threadsQuery.data?.threads ?? []
   const memories = memoriesQuery.data?.memories ?? []
   const scopedDetailDialog =
     detailDialog?.scopeThreadId === currentThreadId ? detailDialog : null
   const isOnboardingTabActive =
     activeLeftTab === "onboarding" && isLeftSidebarOpen
-  const onboardingContextQuery = useQuery({
-    queryKey: currentThreadId
-      ? getGetOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGetQueryKey(
-          currentThreadId
-        )
-      : ["agent-onboarding-context", "idle"],
-    enabled: currentThreadId !== null,
-    retry: false,
-    queryFn: async () => {
-      if (!currentThreadId) {
-        return null
-      }
-
-      return readOptionalResource(() =>
-        getOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGet(
-          currentThreadId
-        )
-      )
-    },
-  })
   const defaultProfileQuery = useQuery({
     queryKey: getGetMySurveyProfileSurveysMeProfileGetQueryKey(),
     enabled:
@@ -131,15 +118,12 @@ export function ChatWorkspaceFrame({ children }: ChatWorkspaceFrameProps) {
       enabled: isOnboardingTabActive,
     },
   })
-  const currentOnboardingContext = onboardingContextQuery.data ?? null
   const defaultProfile = defaultProfileQuery.data ?? null
   const onboardingItems = buildOnboardingPanelItems({
-    currentResultCode: currentOnboardingContext?.result_code ?? null,
+    currentResultCode: selectedOnboarding?.resultCode ?? null,
     defaultProfile,
     savedResults: savedResultsQuery.data?.results ?? [],
   })
-  const isOnboardingInteractionPending =
-    setOnboardingContext.isPending || deleteOnboardingContext.isPending
   const mainPanelDefaultSize = isLeftSidebarOpen ? "76%" : "100%"
   const activityButtonClassName =
     "size-8 cursor-pointer rounded-md text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30"
@@ -181,76 +165,23 @@ export function ChatWorkspaceFrame({ children }: ChatWorkspaceFrameProps) {
     }
   }
 
-  const invalidateOnboardingContext = () => {
-    if (!currentThreadId) {
-      return
-    }
-
-    void queryClient.invalidateQueries({
-      queryKey:
-        getGetOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGetQueryKey(
-          currentThreadId
-        ),
-    })
-  }
-
   const handleToggleOnboardingContext = (
     result: ChatOnboardingResultPreview
   ) => {
-    if (!currentThreadId) {
-      toast("대화를 시작한 뒤 사용할 수 있습니다.")
-      return
-    }
-
-    const isAttached =
-      currentOnboardingContext?.result_code === result.resultCode
+    const isAttached = selectedOnboarding?.resultCode === result.resultCode
 
     if (isAttached) {
-      deleteOnboardingContext.mutate(
-        { threadId: currentThreadId },
-        {
-          onSuccess: () => {
-            invalidateOnboardingContext()
-            toast("성향분석을 채팅에서 제거했습니다.")
-          },
-          onError: (error) => {
-            toast.error(
-              resolveMutationError(
-                error,
-                "성향분석을 채팅에서 제거하지 못했습니다."
-              )
-            )
-          },
-        }
-      )
+      setSelectedOnboarding(null)
+      toast("성향분석을 채팅에서 제거했습니다.")
       return
     }
 
-    setOnboardingContext.mutate(
-      {
-        threadId: currentThreadId,
-        data: {
-          result_code: result.resultCode,
-          selected_category_code: result.selectedCategoryCode ?? null,
-          source: result.isDefault ? "default_profile" : "manual_attach",
-          summary: `${result.profileName} 결과를 현재 채팅 성향 정보로 연결했습니다.`,
-        },
-      },
-      {
-        onSuccess: () => {
-          invalidateOnboardingContext()
-          toast.success("성향분석을 채팅에 추가했습니다.")
-        },
-        onError: (error) => {
-          toast.error(
-            resolveMutationError(
-              error,
-              "성향분석을 채팅에 추가하지 못했습니다."
-            )
-          )
-        },
-      }
-    )
+    setSelectedOnboarding({
+      resultCode: result.resultCode,
+      profileName: result.profileName,
+      selectedCategoryCode: result.selectedCategoryCode ?? null,
+    } satisfies ChatOnboardingSelection)
+    toast.success("성향분석을 채팅에 추가했습니다.")
   }
 
   return (
@@ -301,6 +232,21 @@ export function ChatWorkspaceFrame({ children }: ChatWorkspaceFrameProps) {
             }}
           >
             <Fingerprint className="size-4" />
+          </ActivityButton>
+          <ActivityButton
+            className={cn(
+              activityButtonClassName,
+              activeLeftTab === "market-favorites" && isLeftSidebarOpen
+                ? activeActivityButtonClassName
+                : "hover:bg-muted/70"
+            )}
+            label="관심 상권"
+            onClick={() => {
+              setActiveLeftTab("market-favorites")
+              setIsLeftSidebarOpen(true)
+            }}
+          >
+            <MapPinned className="size-4" />
           </ActivityButton>
           <ActivityButton
             className={cn(
@@ -385,7 +331,7 @@ export function ChatWorkspaceFrame({ children }: ChatWorkspaceFrameProps) {
                       defaultProfileQuery.isLoading ||
                       savedResultsQuery.isLoading
                     }
-                    isInteractionPending={isOnboardingInteractionPending}
+                    isInteractionPending={false}
                     onOpenResult={(result) =>
                       openDetailDialog({
                         kind: "onboarding-result",
@@ -393,6 +339,21 @@ export function ChatWorkspaceFrame({ children }: ChatWorkspaceFrameProps) {
                       })
                     }
                     onToggleContext={handleToggleOnboardingContext}
+                    onCollapsePanel={() => setIsLeftSidebarOpen(false)}
+                  />
+                )}
+                {activeLeftTab === "market-favorites" && (
+                  <MarketFavoritesPanel
+                    favorites={marketFavorites}
+                    isLoading={marketFavoritesQuery.isLoading}
+                    selectedMarketDongCodes={selectedMarketDongCodes}
+                    onToggleMarketArea={toggleMarketArea}
+                    onOpenFavorite={(favorite) =>
+                      openDetailDialog({
+                        kind: "market-favorite",
+                        favorite,
+                      })
+                    }
                     onCollapsePanel={() => setIsLeftSidebarOpen(false)}
                   />
                 )}
@@ -419,11 +380,11 @@ export function ChatWorkspaceFrame({ children }: ChatWorkspaceFrameProps) {
       </div>
 
       <WorkspaceDetailDialog
-        currentOnboardingContext={currentOnboardingContext}
+        currentOnboardingSelection={selectedOnboarding}
         currentThreadId={currentThreadId}
         defaultProfile={defaultProfile}
         dialog={scopedDetailDialog}
-        isOnboardingContextPending={isOnboardingInteractionPending}
+        isOnboardingContextPending={false}
         onClose={() => setDetailDialog(null)}
         onToggleOnboardingContext={handleToggleOnboardingContext}
       />
@@ -512,24 +473,4 @@ const buildOnboardingPanelItems = ({
   }
 
   return items
-}
-
-const resolveMutationError = (error: unknown, fallbackMessage: string) => {
-  if (error instanceof HttpStatusError) {
-    const detail =
-      typeof error.body === "object" &&
-      error.body !== null &&
-      "detail" in error.body &&
-      typeof error.body.detail === "string"
-        ? error.body.detail
-        : null
-
-    return detail ?? fallbackMessage
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallbackMessage
 }

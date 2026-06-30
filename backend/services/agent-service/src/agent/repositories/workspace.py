@@ -11,6 +11,7 @@ from agent.db.models import (
     AgentArtifactRecord,
     AgentContentRecord,
     AgentDocumentRecord,
+    AgentMarketFavoriteRecord,
     AgentMemoryRecord,
     AgentMessageFeedbackRecord,
     AgentOnboardingContextEventRecord,
@@ -82,9 +83,7 @@ class ThreadSettingsRepository:
             )
         )
 
-    async def get(
-        self, session: AsyncSession, thread_id: UUID
-    ) -> AgentThreadSettingsRecord | None:
+    async def get(self, session: AsyncSession, thread_id: UUID) -> AgentThreadSettingsRecord | None:
         return await session.scalar(
             select(AgentThreadSettingsRecord).where(
                 AgentThreadSettingsRecord.thread_id == thread_id
@@ -158,13 +157,48 @@ class MemoryRepository:
         )
 
 
+class MarketFavoriteRepository:
+    async def list(self, session: AsyncSession, owner: str) -> list[AgentMarketFavoriteRecord]:
+        return list(
+            await session.scalars(
+                select(AgentMarketFavoriteRecord)
+                .where(AgentMarketFavoriteRecord.auth_user_uuid == owner)
+                .order_by(AgentMarketFavoriteRecord.updated_at.desc())
+            )
+        )
+
+    async def get_by_dong_code(
+        self, session: AsyncSession, owner: str, dong_code: str
+    ) -> AgentMarketFavoriteRecord | None:
+        return await session.scalar(
+            select(AgentMarketFavoriteRecord).where(
+                AgentMarketFavoriteRecord.auth_user_uuid == owner,
+                AgentMarketFavoriteRecord.dong_code == dong_code,
+            )
+        )
+
+    async def list_by_dong_codes(
+        self, session: AsyncSession, owner: str, dong_codes: list[str]
+    ) -> list[AgentMarketFavoriteRecord]:
+        if not dong_codes:
+            return []
+        records = list(
+            await session.scalars(
+                select(AgentMarketFavoriteRecord).where(
+                    AgentMarketFavoriteRecord.auth_user_uuid == owner,
+                    AgentMarketFavoriteRecord.dong_code.in_(dong_codes),
+                )
+            )
+        )
+        by_code = {record.dong_code: record for record in records}
+        return [record for dong_code in dong_codes if (record := by_code.get(dong_code))]
+
+
 class ArtifactRepository:
     async def list(
         self, session: AsyncSession, owner: str, thread_id: UUID | None
     ) -> list[AgentArtifactRecord]:
-        statement = select(AgentArtifactRecord).where(
-            AgentArtifactRecord.auth_user_uuid == owner
-        )
+        statement = select(AgentArtifactRecord).where(AgentArtifactRecord.auth_user_uuid == owner)
         if thread_id is not None:
             statement = statement.where(AgentArtifactRecord.thread_id == thread_id)
         return list(
@@ -196,9 +230,7 @@ class ArtifactRepository:
         )
         by_id = {record.id: record for record in records}
         return [
-            record
-            for artifact_id in artifact_ids
-            if (record := by_id.get(artifact_id)) is not None
+            record for artifact_id in artifact_ids if (record := by_id.get(artifact_id)) is not None
         ]
 
 
@@ -220,9 +252,7 @@ class ContentRepository:
         )
         by_id = {record.id: record for record in records}
         return [
-            record
-            for content_id in content_ids
-            if (record := by_id.get(content_id)) is not None
+            record for content_id in content_ids if (record := by_id.get(content_id)) is not None
         ]
 
 
@@ -255,9 +285,7 @@ class DocumentRepository:
         )
         by_id = {record.id: record for record in records}
         return [
-            record
-            for document_id in document_ids
-            if (record := by_id.get(document_id)) is not None
+            record for document_id in document_ids if (record := by_id.get(document_id)) is not None
         ]
 
     async def get(
@@ -328,6 +356,7 @@ class OnboardingContextRepository:
 thread_repository = ThreadRepository()
 thread_settings_repository = ThreadSettingsRepository()
 memory_repository = MemoryRepository()
+market_favorite_repository = MarketFavoriteRepository()
 artifact_repository = ArtifactRepository()
 content_repository = ContentRepository()
 document_repository = DocumentRepository()

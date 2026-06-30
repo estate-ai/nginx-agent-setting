@@ -11,6 +11,7 @@ from agent.db.models import (
     AgentArtifactRecord,
     AgentContentRecord,
     AgentDocumentRecord,
+    AgentMarketFavoriteRecord,
     AgentMemoryRecord,
     AgentThreadOnboardingContextRecord,
     AgentThreadRecord,
@@ -21,7 +22,9 @@ from agent.services.chat.system_context_state import (
 
 
 class FakeOnboardingClient:
-    def __init__(self, *, default_profile: dict[str, object] | None = None, fail: bool = False) -> None:
+    def __init__(
+        self, *, default_profile: dict[str, object] | None = None, fail: bool = False
+    ) -> None:
         self.default_profile = default_profile
         self.fail = fail
         self.calls = 0
@@ -153,6 +156,13 @@ async def test_prepare_system_context_state_lazy_initializes_and_overwrites_sele
         "has_memories": True,
         "memory_count": 1,
     }
+    assert system_context["user_memories"] == [
+        {
+            "id": system_context["user_memories"][0]["id"],
+            "content": "메모 하나",
+            "source": "manual",
+        }
+    ]
     assert system_context["onboarding_summary"] == {
         "has_default_profile": True,
         "has_thread_context": True,
@@ -215,6 +225,10 @@ async def test_prepare_system_context_state_refreshes_only_dirty_summary(
     assert result["system_context"]["memory_summary"] == {
         "has_memories": True,
         "memory_count": 2,
+    }
+    assert {memory["content"] for memory in result["system_context"]["user_memories"]} == {
+        "메모 둘",
+        "메모 하나",
     }
     assert result["system_context"]["onboarding_summary"] == {
         "has_default_profile": False,
@@ -307,6 +321,97 @@ async def test_prepare_system_context_state_rejects_invalid_selected_ids(
 
 
 @pytest.mark.asyncio
+async def test_prepare_system_context_state_builds_selected_market_areas(
+    session_factory: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """선택 상권은 현재 사용자 좋아요 목록에 있는 동 코드만 컨텍스트에 들어간다."""
+
+    from agent.services.chat import system_context_state as module
+
+    thread_id, _, _ = await _seed_workspace(session_factory)
+    monkeypatch.setattr(module, "get_session_factory", lambda: session_factory)
+
+    async with session_factory() as session:
+        session.add_all(
+            [
+                AgentMarketFavoriteRecord(
+                    auth_user_uuid="user-a",
+                    dong_code="11230820",
+                    dong_name="역삼1동",
+                ),
+                AgentMarketFavoriteRecord(
+                    auth_user_uuid="user-b",
+                    dong_code="11230830",
+                    dong_name="역삼2동",
+                ),
+            ]
+        )
+        await session.commit()
+
+    result = await prepare_system_context_state_update(
+        None,
+        None,
+        config={},
+        context={
+            "app_thread_id": thread_id,
+            "selected_market_dong_codes": ["11230820"],
+        },
+        server_user=FakeUser(identity="user-a", access_token="token"),
+    )
+
+    assert result["system_context"]["selected_market_areas"] == [
+        {
+            "dong_code": "11230820",
+            "dong_name": "역삼1동",
+        }
+    ]
+
+    with pytest.raises(ValueError, match="must belong"):
+        await prepare_system_context_state_update(
+            None,
+            None,
+            config={},
+            context={
+                "app_thread_id": thread_id,
+                "selected_market_dong_codes": ["11230830"],
+            },
+            server_user=FakeUser(identity="user-a", access_token="token"),
+        )
+
+
+@pytest.mark.asyncio
+async def test_prepare_system_context_state_uses_runtime_onboarding_selection(
+    session_factory: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """runtime context의 성향분석 선택은 스레드 저장값 대신 system_context에 반영된다."""
+
+    from agent.services.chat import system_context_state as module
+
+    thread_id, _, _ = await _seed_workspace(session_factory)
+    monkeypatch.setattr(module, "get_session_factory", lambda: session_factory)
+
+    result = await prepare_system_context_state_update(
+        None,
+        None,
+        config={},
+        context={
+            "app_thread_id": thread_id,
+            "selected_onboarding_result_code": "runtime-result",
+            "selected_onboarding_category_code": "CS100010",
+        },
+        server_user=FakeUser(identity="user-a", access_token="token"),
+    )
+
+    assert result["system_context"]["onboarding_summary"] == {
+        "has_default_profile": False,
+        "has_thread_context": True,
+        "result_code": "runtime-result",
+        "selected_category_code": "CS100010",
+        "source": "manual_attach",
+    }
+
+
+@pytest.mark.asyncio
 async def test_prepare_system_context_state_keeps_chat_running_when_onboarding_init_fails(
     session_factory: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -362,6 +467,8 @@ async def test_prepare_system_context_state_ignores_configurable_auth_user() -> 
     assert result["system_context"] == {
         "selected_documents": [],
         "selected_artifacts": [],
+        "selected_market_areas": [],
+        "user_memories": [],
         "memory_summary": None,
         "onboarding_summary": None,
     }

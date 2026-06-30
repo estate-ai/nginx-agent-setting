@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { toast } from "sonner"
 import { ToolMessage } from "@langchain/core/messages"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { HttpStatusError } from "@/features/auth/lib/fetch-with-auth"
+import { useQueryClient } from "@tanstack/react-query"
+import { MapChatOverlayPanel } from "@/features/agent/components/map-chat-widget/map-chat-overlay-panel"
+import { parseMapAreaSearchToolResult } from "@/features/agent/lib/map-area-tool-result"
 import { ChatView } from "@/features/chat/components/workspace/chat-view"
 import type { ToolPolicyControls } from "@/features/chat/hooks/langgraph-chat-stream-context"
 import { LangGraphChatStreamProvider } from "@/features/chat/hooks/langgraph-chat-stream-provider"
@@ -19,8 +19,6 @@ import {
 import { useChatWorkspace } from "@/features/chat/providers/chat-workspace-provider"
 import type { ChatReasoningEffort } from "@/features/chat/types/chat-model-selection"
 import type { ChatRightPanel } from "@/features/chat/types/workspace"
-import { MapChatOverlayPanel } from "@/features/agent/components/map-chat-widget/map-chat-overlay-panel"
-import { parseMapAreaSearchToolResult } from "@/features/agent/lib/map-area-tool-result"
 import { mapQueryKeys } from "@/features/map/lib/map-query-options"
 import { useMapStore } from "@/features/map/store/map-store"
 import {
@@ -31,11 +29,7 @@ import {
   getListDocumentsApiV1AgentDocumentsGetQueryKey,
   useListDocumentsApiV1AgentDocumentsGet,
 } from "@/shared/api/generated/agent/endpoints/agent-documents/agent-documents"
-import {
-  getGetOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGetQueryKey,
-  getOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGet,
-  useDeleteOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextDelete,
-} from "@/shared/api/generated/agent/endpoints/agent-onboarding-context/agent-onboarding-context"
+import { useListMarketFavoritesApiV1AgentMarketFavoritesGet } from "@/shared/api/generated/agent/endpoints/agent-market-favorites/agent-market-favorites"
 import {
   useListLlmModelsApiV1LlmModelsGet,
   useListLlmToolsApiV1LlmToolsGet,
@@ -213,25 +207,21 @@ function MapAgentThreadContent({
   const selectedDocumentIds = useChatWorkspace(
     (state) => state.selectedDocumentIds
   )
+  const selectedMarketDongCodes = useChatWorkspace(
+    (state) => state.selectedMarketDongCodes
+  )
+  const selectedOnboarding = useChatWorkspace(
+    (state) => state.selectedOnboarding
+  )
+  const setSelectedOnboarding = useChatWorkspace(
+    (state) => state.setSelectedOnboarding
+  )
   const [rightPanel, setRightPanel] = useState<ChatRightPanel | null>(null)
   const documentsQuery = useListDocumentsApiV1AgentDocumentsGet()
+  const marketFavoritesQuery =
+    useListMarketFavoritesApiV1AgentMarketFavoritesGet()
   const artifactsQuery = useListArtifactsApiV1AgentArtifactsGet({
     thread_id: thread.id,
-  })
-  const deleteOnboardingContext =
-    useDeleteOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextDelete()
-  const onboardingContextQuery = useQuery({
-    queryKey:
-      getGetOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGetQueryKey(
-        thread.id
-      ),
-    retry: false,
-    queryFn: async () =>
-      readOptionalResource(() =>
-        getOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGet(
-          thread.id
-        )
-      ),
   })
   const documents = useMemo(
     () => documentsQuery.data?.documents ?? [],
@@ -240,6 +230,10 @@ function MapAgentThreadContent({
   const artifacts = useMemo(
     () => artifactsQuery.data?.artifacts ?? [],
     [artifactsQuery.data?.artifacts]
+  )
+  const marketFavorites = useMemo(
+    () => marketFavoritesQuery.data?.favorites ?? [],
+    [marketFavoritesQuery.data?.favorites]
   )
   const resolvedRightPanel = reconcileWorkspaceRightPanel({
     panel: rightPanel,
@@ -319,21 +313,30 @@ function MapAgentThreadContent({
   ])
 
   useEffect(() => {
-    if (!documentsQuery.data || !artifactsQuery.data) {
+    if (
+      !documentsQuery.data ||
+      !artifactsQuery.data ||
+      !marketFavoritesQuery.data
+    ) {
       return
     }
 
     const nextSelections = pruneWorkspaceSelections({
       documentIds: selectedDocumentIds,
       artifactIds: selectedArtifactIds,
+      marketDongCodes: selectedMarketDongCodes,
+      onboarding: selectedOnboarding,
       documents,
       artifacts,
+      marketFavorites,
     })
 
     if (
       !areWorkspaceSelectionsEqual(nextSelections, {
         documentIds: selectedDocumentIds,
         artifactIds: selectedArtifactIds,
+        marketDongCodes: selectedMarketDongCodes,
+        onboarding: selectedOnboarding,
       })
     ) {
       replaceSelections(nextSelections)
@@ -343,9 +346,13 @@ function MapAgentThreadContent({
     artifactsQuery.data,
     documents,
     documentsQuery.data,
+    marketFavorites,
+    marketFavoritesQuery.data,
     replaceSelections,
     selectedArtifactIds,
     selectedDocumentIds,
+    selectedMarketDongCodes,
+    selectedOnboarding,
   ])
 
   useEffect(() => {
@@ -377,31 +384,6 @@ function MapAgentThreadContent({
     }
   }, [queryClient, thread.id, toolCalls])
 
-  const handleRemoveOnboardingContext = () => {
-    deleteOnboardingContext.mutate(
-      { threadId: thread.id },
-      {
-        onSuccess: () => {
-          void queryClient.invalidateQueries({
-            queryKey:
-              getGetOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGetQueryKey(
-                thread.id
-              ),
-          })
-          toast("성향분석을 채팅에서 제거했습니다.")
-        },
-        onError: (error) => {
-          toast.error(
-            resolveWorkspaceMutationError(
-              error,
-              "성향분석을 채팅에서 제거하지 못했습니다."
-            )
-          )
-        },
-      }
-    )
-  }
-
   const handleSetRightPanel = (panel: ChatRightPanel | null) => {
     setRightPanel(panel)
 
@@ -431,11 +413,12 @@ function MapAgentThreadContent({
         activeThreadTitle={thread.title}
         artifacts={artifacts}
         documents={documents}
-        hasOnboardingContext={onboardingContextQuery.data !== null}
-        isOnboardingContextRemoving={deleteOnboardingContext.isPending}
+        marketFavorites={marketFavorites}
+        hasOnboardingContext={selectedOnboarding !== null}
+        isOnboardingContextRemoving={false}
         isRightPanelOpen={Boolean(resolvedRightPanel)}
         isExpanded={!resolvedRightPanel}
-        onRemoveOnboardingContext={handleRemoveOnboardingContext}
+        onRemoveOnboardingContext={() => setSelectedOnboarding(null)}
         onSetRightPanel={handleSetRightPanel}
         onToggleExpand={() =>
           handleSetRightPanel(resolvedRightPanel ? null : { kind: "library" })
@@ -455,38 +438,4 @@ function MapAgentThreadContent({
       />
     </div>
   )
-}
-
-const readOptionalResource = async <T,>(loader: () => Promise<T>) => {
-  try {
-    return await loader()
-  } catch (error) {
-    if (error instanceof HttpStatusError && error.status === 404) {
-      return null
-    }
-    throw error
-  }
-}
-
-const resolveWorkspaceMutationError = (
-  error: unknown,
-  fallbackMessage: string
-) => {
-  if (error instanceof HttpStatusError) {
-    const detail =
-      typeof error.body === "object" &&
-      error.body !== null &&
-      "detail" in error.body &&
-      typeof error.body.detail === "string"
-        ? error.body.detail
-        : null
-
-    return detail ?? fallbackMessage
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallbackMessage
 }

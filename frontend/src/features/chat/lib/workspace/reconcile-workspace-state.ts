@@ -1,13 +1,17 @@
 import type { AssembledToolCall } from "@langchain/langgraph-sdk/stream"
 import type { ChatRightPanel } from "@/features/chat/types/workspace"
+import type { ChatOnboardingSelection } from "@/features/chat/types/workspace"
 import type {
   ArtifactResponse,
   DocumentResponse,
+  MarketFavoriteResponse,
 } from "@/shared/api/generated/agent/schemas"
 
 type ChatWorkspaceSelections = {
   documentIds: string[]
   artifactIds: string[]
+  marketDongCodes: string[]
+  onboarding: ChatOnboardingSelection | null
 }
 
 type ChatWorkspaceRefreshPlan = {
@@ -28,18 +32,29 @@ const DOCUMENT_MUTATION_TOOLS = new Set([
 export const pruneWorkspaceSelections = ({
   documentIds,
   artifactIds,
+  marketDongCodes,
+  onboarding,
   documents,
   artifacts,
+  marketFavorites,
 }: ChatWorkspaceSelections & {
   documents: DocumentResponse[]
   artifacts: ArtifactResponse[]
+  marketFavorites: MarketFavoriteResponse[]
 }): ChatWorkspaceSelections => {
   const availableDocumentIds = new Set(documents.map((document) => document.id))
   const availableArtifactIds = new Set(artifacts.map((artifact) => artifact.id))
+  const availableMarketDongCodes = new Set(
+    marketFavorites.map((favorite) => favorite.dong_code)
+  )
 
   return {
     documentIds: documentIds.filter((id) => availableDocumentIds.has(id)),
     artifactIds: artifactIds.filter((id) => availableArtifactIds.has(id)),
+    marketDongCodes: marketDongCodes.filter((dongCode) =>
+      availableMarketDongCodes.has(dongCode)
+    ),
+    onboarding,
   }
 }
 
@@ -53,10 +68,25 @@ export const areWorkspaceSelectionsEqual = (
   if (left.artifactIds.length !== right.artifactIds.length) {
     return false
   }
+  if (left.marketDongCodes.length !== right.marketDongCodes.length) {
+    return false
+  }
+  if (left.onboarding?.resultCode !== right.onboarding?.resultCode) {
+    return false
+  }
+  if (
+    left.onboarding?.selectedCategoryCode !==
+    right.onboarding?.selectedCategoryCode
+  ) {
+    return false
+  }
 
   return (
     left.documentIds.every((id, index) => right.documentIds[index] === id) &&
-    left.artifactIds.every((id, index) => right.artifactIds[index] === id)
+    left.artifactIds.every((id, index) => right.artifactIds[index] === id) &&
+    left.marketDongCodes.every(
+      (dongCode, index) => right.marketDongCodes[index] === dongCode
+    )
   )
 }
 

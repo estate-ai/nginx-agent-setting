@@ -21,6 +21,17 @@ class SelectedArtifactContextState(TypedDict):
     version: int
 
 
+class SelectedMarketAreaContextState(TypedDict):
+    dong_code: str
+    dong_name: str
+
+
+class UserMemoryContextState(TypedDict):
+    id: str
+    content: str
+    source: str
+
+
 class MemorySummary(TypedDict):
     has_memories: bool
     memory_count: int
@@ -37,6 +48,8 @@ class OnboardingSummary(TypedDict):
 class SystemContextState(TypedDict):
     selected_documents: list[SelectedDocumentContextState]
     selected_artifacts: list[SelectedArtifactContextState]
+    selected_market_areas: list[SelectedMarketAreaContextState]
+    user_memories: list[UserMemoryContextState]
     memory_summary: MemorySummary | None
     onboarding_summary: OnboardingSummary | None
     client_surface: NotRequired[str]

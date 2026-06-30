@@ -13,6 +13,7 @@ import type {
 import type { LlmChatStreamStatus } from "@/features/chat/types/langgraph-chat-state"
 import type { LlmToolDefinition } from "@/features/chat/types/llm-tool-definition"
 import type { ToolPolicyState } from "@/features/chat/types/tool-policy-state"
+import type { ChatOnboardingSelection } from "@/features/chat/types/workspace"
 
 export type ChatModelSelectionControls = ChatModelSelection & {
   selectedModel: ChatModelOption
@@ -32,6 +33,8 @@ export type ToolPolicyControls = ToolPolicyState & {
 export type ChatTurnOptions = {
   selectedDocumentIds?: string[]
   selectedArtifactIds?: string[]
+  selectedMarketDongCodes?: string[]
+  selectedOnboarding?: ChatOnboardingSelection | null
 }
 
 export type QueuedChatMessage = {

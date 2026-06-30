@@ -11,6 +11,7 @@ from agent.db.models import (
     AgentArtifactRecord,
     AgentContentRecord,
     AgentDocumentRecord,
+    AgentMarketFavoriteRecord,
     AgentMemoryRecord,
     AgentMessageFeedbackRecord,
     AgentThreadOnboardingContextRecord,
@@ -20,6 +21,7 @@ from agent.repositories.workspace import (
     content_repository,
     document_repository,
     feedback_repository,
+    market_favorite_repository,
     memory_repository,
     onboarding_context_repository,
     thread_repository,
@@ -37,8 +39,10 @@ from agent.schemas.workspace import (
     CreateAgentThreadRequest,
     CreateArtifactRequest,
     CreateDocumentRequest,
+    CreateMarketFavoriteRequest,
     CreateMemoryRequest,
     DocumentResponse,
+    MarketFavoriteResponse,
     MemoryResponse,
     MessageFeedbackRequest,
     MessageFeedbackResponse,
@@ -62,7 +66,9 @@ def _default_model_settings() -> tuple[str, str]:
 
 
 def _not_found(resource: str) -> HTTPException:
-    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{resource}을 찾을 수 없습니다.")
+    return HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail=f"{resource}을 찾을 수 없습니다."
+    )
 
 
 def _thread_response(record: Any) -> AgentThreadResponse:
@@ -86,6 +92,12 @@ def _memory_response(record: Any) -> MemoryResponse:
     return MemoryResponse.model_validate(record)
 
 
+def _market_favorite_response(
+    record: AgentMarketFavoriteRecord,
+) -> MarketFavoriteResponse:
+    return MarketFavoriteResponse.model_validate(record)
+
+
 def _normalize_raw_text(raw_text: str) -> str:
     normalized = raw_text.strip()
     if not normalized:
@@ -96,7 +108,9 @@ def _normalize_raw_text(raw_text: str) -> str:
     return normalized
 
 
-def _artifact_response(record: AgentArtifactRecord, content: AgentContentRecord) -> ArtifactResponse:
+def _artifact_response(
+    record: AgentArtifactRecord, content: AgentContentRecord
+) -> ArtifactResponse:
     return ArtifactResponse(
         id=record.id,
         thread_id=record.thread_id,
@@ -113,7 +127,9 @@ def _artifact_response(record: AgentArtifactRecord, content: AgentContentRecord)
     )
 
 
-def _document_response(record: AgentDocumentRecord, content: AgentContentRecord) -> DocumentResponse:
+def _document_response(
+    record: AgentDocumentRecord, content: AgentContentRecord
+) -> DocumentResponse:
     return DocumentResponse(
         id=record.id,
         type=content.type,
@@ -160,7 +176,9 @@ class WorkspaceService:
         return await thread_settings_repository.create(
             session,
             thread_id=thread_id,
-            model=preferences.default_model if preferences and preferences.default_model else default_model,
+            model=preferences.default_model
+            if preferences and preferences.default_model
+            else default_model,
             reasoning_effort=(
                 preferences.default_reasoning_effort
                 if preferences and preferences.default_reasoning_effort
@@ -170,9 +188,7 @@ class WorkspaceService:
             interrupt_on=interrupt_on,
         )
 
-    async def list_threads(
-        self, session: AsyncSession, owner: str
-    ) -> list[AgentThreadResponse]:
+    async def list_threads(self, session: AsyncSession, owner: str) -> list[AgentThreadResponse]:
         return [_thread_response(item) for item in await thread_repository.list(session, owner)]
 
     async def create_thread(
@@ -215,9 +231,7 @@ class WorkspaceService:
         await session.refresh(record)
         return _thread_response(record)
 
-    async def delete_thread(
-        self, session: AsyncSession, *, owner: str, thread_id: UUID
-    ) -> None:
+    async def delete_thread(self, session: AsyncSession, *, owner: str, thread_id: UUID) -> None:
         record = await thread_repository.get(session, owner, thread_id)
         if record is None:
             raise _not_found("스레드")
@@ -232,9 +246,7 @@ class WorkspaceService:
             raise _not_found("스레드")
         record = await thread_settings_repository.get(session, thread_id)
         if record is None:
-            record = await self._create_default_settings(
-                session, owner=owner, thread_id=thread_id
-            )
+            record = await self._create_default_settings(session, owner=owner, thread_id=thread_id)
             await session.commit()
             await session.refresh(record)
         return _settings_response(record)
@@ -252,9 +264,7 @@ class WorkspaceService:
             raise _not_found("스레드")
         record = await thread_settings_repository.get(session, thread_id)
         if record is None:
-            record = await self._create_default_settings(
-                session, owner=owner, thread_id=thread_id
-            )
+            record = await self._create_default_settings(session, owner=owner, thread_id=thread_id)
         record.model = request.model
         record.reasoning_effort = request.reasoning_effort
         record.allowed_tools_json = list(request.allowed_tools)
@@ -263,10 +273,55 @@ class WorkspaceService:
         await session.refresh(record)
         return _settings_response(record)
 
-    async def list_memories(
-        self, session: AsyncSession, owner: str
-    ) -> list[MemoryResponse]:
+    async def list_memories(self, session: AsyncSession, owner: str) -> list[MemoryResponse]:
         return [_memory_response(item) for item in await memory_repository.list(session, owner)]
+
+    async def list_market_favorites(
+        self, session: AsyncSession, owner: str
+    ) -> list[MarketFavoriteResponse]:
+        return [
+            _market_favorite_response(item)
+            for item in await market_favorite_repository.list(session, owner)
+        ]
+
+    async def upsert_market_favorite(
+        self,
+        session: AsyncSession,
+        *,
+        owner: str,
+        request: CreateMarketFavoriteRequest,
+    ) -> MarketFavoriteResponse:
+        dong_code = request.dong_code.strip()
+        dong_name = request.dong_name.strip()
+        if not dong_code or not dong_name:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="동 코드와 동 이름은 비어 있을 수 없습니다.",
+            )
+
+        record = await market_favorite_repository.get_by_dong_code(session, owner, dong_code)
+        if record is None:
+            record = AgentMarketFavoriteRecord(
+                auth_user_uuid=owner,
+                dong_code=dong_code,
+                dong_name=dong_name,
+            )
+            session.add(record)
+        else:
+            record.dong_name = dong_name
+
+        await session.commit()
+        await session.refresh(record)
+        return _market_favorite_response(record)
+
+    async def delete_market_favorite(
+        self, session: AsyncSession, *, owner: str, dong_code: str
+    ) -> None:
+        record = await market_favorite_repository.get_by_dong_code(session, owner, dong_code)
+        if record is None:
+            raise _not_found("상권 좋아요")
+        await session.delete(record)
+        await session.commit()
 
     async def create_memory(
         self,
@@ -303,9 +358,7 @@ class WorkspaceService:
         await session.refresh(record)
         return _memory_response(record)
 
-    async def delete_memory(
-        self, session: AsyncSession, *, owner: str, memory_id: UUID
-    ) -> None:
+    async def delete_memory(self, session: AsyncSession, *, owner: str, memory_id: UUID) -> None:
         record = await memory_repository.get(session, owner, memory_id)
         if record is None:
             raise _not_found("메모리")
@@ -426,9 +479,7 @@ class WorkspaceService:
         await session.refresh(copied_content)
         return _document_response(document, copied_content)
 
-    async def list_documents(
-        self, session: AsyncSession, owner: str
-    ) -> list[DocumentResponse]:
+    async def list_documents(self, session: AsyncSession, owner: str) -> list[DocumentResponse]:
         records = await document_repository.list(session, owner)
         contents = {
             content.id: content
@@ -527,9 +578,7 @@ class WorkspaceService:
         thread = await thread_repository.get(session, owner, request.thread_id)
         if thread is None:
             raise _not_found("스레드")
-        record = await feedback_repository.get(
-            session, owner, request.thread_id, message_id
-        )
+        record = await feedback_repository.get(session, owner, request.thread_id, message_id)
         if record is None:
             record = AgentMessageFeedbackRecord(
                 auth_user_uuid=owner,

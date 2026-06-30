@@ -10,6 +10,7 @@ def test_workspace_tables_are_registered() -> None:
         "agent_thread_settings",
         "agent_user_preferences",
         "agent_memories",
+        "agent_market_favorites",
         "agent_thread_onboarding_contexts",
         "agent_onboarding_context_events",
         "agent_contents",
@@ -28,13 +29,10 @@ def test_owner_columns_are_indexed_for_user_scoped_resources() -> None:
     for table_name in (
         "agent_threads",
         "agent_memories",
+        "agent_market_favorites",
         "agent_artifacts",
         "agent_documents",
     ):
         table = Base.metadata.tables[table_name]
-        indexed_columns = {
-            column.name
-            for index in table.indexes
-            for column in index.columns
-        }
+        indexed_columns = {column.name for index in table.indexes for column in index.columns}
         assert "auth_user_uuid" in indexed_columns

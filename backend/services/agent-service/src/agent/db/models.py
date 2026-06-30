@@ -69,15 +69,15 @@ class AgentThreadSettingsRecord(TimestampMixin, Base):
 
 class AgentUserPreferencesRecord(TimestampMixin, Base):
     __tablename__ = "agent_user_preferences"
-    __table_args__ = (
-        UniqueConstraint("auth_user_uuid", name="uq_agent_user_preferences_owner"),
-    )
+    __table_args__ = (UniqueConstraint("auth_user_uuid", name="uq_agent_user_preferences_owner"),)
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     auth_user_uuid: Mapped[str] = mapped_column(String(128), nullable=False)
     default_model: Mapped[str | None] = mapped_column(String(128))
     default_reasoning_effort: Mapped[str | None] = mapped_column(String(32))
-    default_allowed_tools_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    default_allowed_tools_json: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
     default_interrupt_on_json: Mapped[dict[str, Any]] = mapped_column(
         JSON, nullable=False, default=dict
     )
@@ -96,6 +96,23 @@ class AgentMemoryRecord(TimestampMixin, Base):
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AgentMarketFavoriteRecord(TimestampMixin, Base):
+    __tablename__ = "agent_market_favorites"
+    __table_args__ = (
+        UniqueConstraint(
+            "auth_user_uuid",
+            "dong_code",
+            name="uq_agent_market_favorites_owner_dong",
+        ),
+        Index("ix_agent_market_favorites_owner", "auth_user_uuid"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    auth_user_uuid: Mapped[str] = mapped_column(String(128), nullable=False)
+    dong_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    dong_name: Mapped[str] = mapped_column(String(120), nullable=False)
 
 
 class AgentThreadOnboardingContextRecord(TimestampMixin, Base):

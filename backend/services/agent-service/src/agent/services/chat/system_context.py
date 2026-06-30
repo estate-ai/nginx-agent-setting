@@ -16,7 +16,7 @@ def _current_datetime_context_line() -> str:
     now_utc = datetime.now(timezone.utc)
     now_local = now_utc.astimezone(_SERVICE_TIMEZONE)
     return (
-        '<current_datetime '
+        "<current_datetime "
         f'date="{now_local:%Y-%m-%d}" '
         f'hour="{now_local:%H}" '
         'timezone="Asia/Seoul" />'
@@ -28,8 +28,14 @@ def build_system_context(system_context_state: SystemContextState | None) -> str
 
     selected_documents = system_context_state["selected_documents"] if system_context_state else []
     selected_artifacts = system_context_state["selected_artifacts"] if system_context_state else []
+    selected_market_areas = (
+        system_context_state.get("selected_market_areas", []) if system_context_state else []
+    )
+    user_memories = system_context_state.get("user_memories", []) if system_context_state else []
     memory_summary = system_context_state["memory_summary"] if system_context_state else None
-    onboarding_summary = system_context_state["onboarding_summary"] if system_context_state else None
+    onboarding_summary = (
+        system_context_state["onboarding_summary"] if system_context_state else None
+    )
     client_surface = system_context_state.get("client_surface") if system_context_state else None
 
     lines = ["<system_context>", _current_datetime_context_line()]
@@ -53,9 +59,9 @@ def build_system_context(system_context_state: SystemContextState | None) -> str
                 f'<document id="{escape(document["id"])}" type="{escape(document["type"])}">'
             )
             if document["title"] is not None:
-                lines.append(f'<title>{escape(document["title"])}</title>')
+                lines.append(f"<title>{escape(document['title'])}</title>")
             if document["summary"] is not None:
-                lines.append(f'<summary>{escape(document["summary"])}</summary>')
+                lines.append(f"<summary>{escape(document['summary'])}</summary>")
             lines.append("</document>")
         lines.append("</selected_documents>")
         lines.append(
@@ -69,14 +75,37 @@ def build_system_context(system_context_state: SystemContextState | None) -> str
                 f'<artifact id="{escape(artifact["id"])}" type="{escape(artifact["type"])}" version="{artifact["version"]}">'
             )
             if artifact["title"] is not None:
-                lines.append(f'<title>{escape(artifact["title"])}</title>')
+                lines.append(f"<title>{escape(artifact['title'])}</title>")
             if artifact["summary"] is not None:
-                lines.append(f'<summary>{escape(artifact["summary"])}</summary>')
+                lines.append(f"<summary>{escape(artifact['summary'])}</summary>")
             lines.append("</artifact>")
         lines.append("</selected_artifacts>")
         lines.append(
             "<artifact_usage_hint>선택 아티팩트의 원문이 필요하면 artifact_get 도구를 사용한다.</artifact_usage_hint>"
         )
+
+    if selected_market_areas:
+        lines.append("<selected_market_areas>")
+        for market_area in selected_market_areas:
+            lines.append(
+                "<market_area "
+                f'dong_code="{escape(market_area["dong_code"])}" '
+                f'dong_name="{escape(market_area["dong_name"])}" />'
+            )
+        lines.append("</selected_market_areas>")
+        lines.append(
+            "<market_area_usage_hint>선택 상권을 분석할 때는 market_area의 dong_code를 사용해 market_get_dong_report 도구를 호출한다.</market_area_usage_hint>"
+        )
+
+    if user_memories:
+        lines.append("<user_memories>")
+        for memory in user_memories:
+            lines.append(
+                f'<memory id="{escape(memory["id"])}" source="{escape(memory["source"])}">'
+                f"{escape(memory['content'])}"
+                "</memory>"
+            )
+        lines.append("</user_memories>")
 
     if memory_summary is not None:
         lines.append(
@@ -89,13 +118,10 @@ def build_system_context(system_context_state: SystemContextState | None) -> str
             f'has_thread_context="{str(onboarding_summary["has_thread_context"]).lower()}"',
         ]
         if onboarding_summary["result_code"] is not None:
-            attributes.append(
-                f'result_code="{escape(onboarding_summary["result_code"])}"'
-            )
+            attributes.append(f'result_code="{escape(onboarding_summary["result_code"])}"')
         if onboarding_summary["selected_category_code"] is not None:
             attributes.append(
-                'selected_category_code="'
-                f'{escape(onboarding_summary["selected_category_code"])}"'
+                f'selected_category_code="{escape(onboarding_summary["selected_category_code"])}"'
             )
         if onboarding_summary["source"] is not None:
             attributes.append(f'source="{escape(onboarding_summary["source"])}"')

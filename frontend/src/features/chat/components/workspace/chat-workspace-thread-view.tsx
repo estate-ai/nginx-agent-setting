@@ -2,9 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { HttpStatusError } from "@/features/auth/lib/fetch-with-auth"
+import { useQueryClient } from "@tanstack/react-query"
 import { ChatView } from "@/features/chat/components/workspace/chat-view"
 import { ChatWorkspaceShell } from "@/features/chat/components/workspace/chat-workspace-shell"
 import { LangGraphChatStreamProvider } from "@/features/chat/hooks/langgraph-chat-stream-provider"
@@ -18,7 +16,10 @@ import {
 } from "@/features/chat/lib/workspace/reconcile-workspace-state"
 import { useChatWorkspace } from "@/features/chat/providers/chat-workspace-provider"
 import type { ChatReasoningEffort } from "@/features/chat/types/chat-model-selection"
-import type { ChatRightPanel } from "@/features/chat/types/workspace"
+import type {
+  ChatOnboardingSelection,
+  ChatRightPanel,
+} from "@/features/chat/types/workspace"
 import {
   getListArtifactsApiV1AgentArtifactsGetQueryKey,
   useListArtifactsApiV1AgentArtifactsGet,
@@ -27,11 +28,7 @@ import {
   getListDocumentsApiV1AgentDocumentsGetQueryKey,
   useListDocumentsApiV1AgentDocumentsGet,
 } from "@/shared/api/generated/agent/endpoints/agent-documents/agent-documents"
-import {
-  getGetOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGetQueryKey,
-  getOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGet,
-  useDeleteOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextDelete,
-} from "@/shared/api/generated/agent/endpoints/agent-onboarding-context/agent-onboarding-context"
+import { useListMarketFavoritesApiV1AgentMarketFavoritesGet } from "@/shared/api/generated/agent/endpoints/agent-market-favorites/agent-market-favorites"
 import { useListThreadsApiV1AgentThreadsGet } from "@/shared/api/generated/agent/endpoints/agent-threads/agent-threads"
 import {
   useListLlmModelsApiV1LlmModelsGet,
@@ -46,6 +43,8 @@ type ChatWorkspaceThreadViewProps = {
   starterSelections?: {
     selectedArtifactIds?: string[]
     selectedDocumentIds?: string[]
+    selectedMarketDongCodes?: string[]
+    selectedOnboarding?: ChatOnboardingSelection | null
   }
 }
 
@@ -58,6 +57,8 @@ function ChatWorkspaceThreadStarter({
   starterSelections?: {
     selectedArtifactIds?: string[]
     selectedDocumentIds?: string[]
+    selectedMarketDongCodes?: string[]
+    selectedOnboarding?: ChatOnboardingSelection | null
   }
   threadId: string
 }) {
@@ -210,6 +211,8 @@ function ChatThreadWorkspace({
   starterSelections?: {
     selectedArtifactIds?: string[]
     selectedDocumentIds?: string[]
+    selectedMarketDongCodes?: string[]
+    selectedOnboarding?: ChatOnboardingSelection | null
   }
 }) {
   const queryClient = useQueryClient()
@@ -223,32 +226,29 @@ function ChatThreadWorkspace({
   const selectedDocumentIds = useChatWorkspace(
     (state) => state.selectedDocumentIds
   )
+  const selectedMarketDongCodes = useChatWorkspace(
+    (state) => state.selectedMarketDongCodes
+  )
+  const selectedOnboarding = useChatWorkspace(
+    (state) => state.selectedOnboarding
+  )
+  const setSelectedOnboarding = useChatWorkspace(
+    (state) => state.setSelectedOnboarding
+  )
   const setIsLeftSidebarOpen = useChatWorkspace(
     (state) => state.setIsLeftSidebarOpen
   )
   const [rightPanel, setRightPanel] = useState<ChatRightPanel | null>(null)
   const documentsQuery = useListDocumentsApiV1AgentDocumentsGet()
+  const marketFavoritesQuery =
+    useListMarketFavoritesApiV1AgentMarketFavoritesGet()
   const artifactsQuery = useListArtifactsApiV1AgentArtifactsGet({
     thread_id: appThreadId,
   })
-  const deleteOnboardingContext =
-    useDeleteOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextDelete()
-  const onboardingContextQuery = useQuery({
-    queryKey:
-      getGetOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGetQueryKey(
-        appThreadId
-      ),
-    retry: false,
-    queryFn: async () =>
-      readOptionalResource(() =>
-        getOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGet(
-          appThreadId
-        )
-      ),
-  })
   const documents = documentsQuery.data?.documents
+  const marketFavorites = marketFavoritesQuery.data?.favorites
   const artifacts = artifactsQuery.data?.artifacts
-  const hasOnboardingContext = onboardingContextQuery.data !== null
+  const hasOnboardingContext = selectedOnboarding !== null
   const resolvedRightPanel = reconcileWorkspaceRightPanel({
     panel: rightPanel,
     documents: documents ?? [],
@@ -270,21 +270,26 @@ function ChatThreadWorkspace({
   }, [appThreadId, resetSelections])
 
   useEffect(() => {
-    if (!documents || !artifacts) {
+    if (!documents || !artifacts || !marketFavorites) {
       return
     }
 
     const nextSelections = pruneWorkspaceSelections({
       documentIds: selectedDocumentIds,
       artifactIds: selectedArtifactIds,
+      marketDongCodes: selectedMarketDongCodes,
+      onboarding: selectedOnboarding,
       documents,
       artifacts,
+      marketFavorites,
     })
 
     if (
       !areWorkspaceSelectionsEqual(nextSelections, {
         documentIds: selectedDocumentIds,
         artifactIds: selectedArtifactIds,
+        marketDongCodes: selectedMarketDongCodes,
+        onboarding: selectedOnboarding,
       })
     ) {
       replaceSelections(nextSelections)
@@ -292,9 +297,12 @@ function ChatThreadWorkspace({
   }, [
     artifacts,
     documents,
+    marketFavorites,
     replaceSelections,
     selectedArtifactIds,
     selectedDocumentIds,
+    selectedMarketDongCodes,
+    selectedOnboarding,
   ])
 
   useEffect(() => {
@@ -355,31 +363,6 @@ function ChatThreadWorkspace({
     }
   }
 
-  const handleRemoveOnboardingContext = () => {
-    deleteOnboardingContext.mutate(
-      { threadId: appThreadId },
-      {
-        onSuccess: () => {
-          void queryClient.invalidateQueries({
-            queryKey:
-              getGetOnboardingContextApiV1AgentThreadsThreadIdOnboardingContextGetQueryKey(
-                appThreadId
-              ),
-          })
-          toast("성향분석을 채팅에서 제거했습니다.")
-        },
-        onError: (error) => {
-          toast.error(
-            resolveWorkspaceMutationError(
-              error,
-              "성향분석을 채팅에서 제거하지 못했습니다."
-            )
-          )
-        },
-      }
-    )
-  }
-
   return (
     <ChatWorkspaceShell
       panel={resolvedRightPanel}
@@ -395,49 +378,16 @@ function ChatThreadWorkspace({
         activeThreadTitle={activeThreadTitle}
         artifacts={artifacts ?? []}
         documents={documents ?? []}
+        marketFavorites={marketFavorites ?? []}
         hasOnboardingContext={hasOnboardingContext}
-        isOnboardingContextRemoving={deleteOnboardingContext.isPending}
+        isOnboardingContextRemoving={false}
         isRightPanelOpen={Boolean(resolvedRightPanel)}
         isExpanded={isExpanded}
-        onRemoveOnboardingContext={handleRemoveOnboardingContext}
+        onRemoveOnboardingContext={() => setSelectedOnboarding(null)}
         onSetRightPanel={handleSetRightPanel}
         onToggleExpand={handleToggleExpand}
         onToggleRightPanel={() => handleSetRightPanel({ kind: "library" })}
       />
     </ChatWorkspaceShell>
   )
-}
-
-const readOptionalResource = async <T,>(loader: () => Promise<T>) => {
-  try {
-    return await loader()
-  } catch (error) {
-    if (error instanceof HttpStatusError && error.status === 404) {
-      return null
-    }
-    throw error
-  }
-}
-
-const resolveWorkspaceMutationError = (
-  error: unknown,
-  fallbackMessage: string
-) => {
-  if (error instanceof HttpStatusError) {
-    const detail =
-      typeof error.body === "object" &&
-      error.body !== null &&
-      "detail" in error.body &&
-      typeof error.body.detail === "string"
-        ? error.body.detail
-        : null
-
-    return detail ?? fallbackMessage
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallbackMessage
 }

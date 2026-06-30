@@ -22,6 +22,15 @@ const ChatThreadSearchParamsSchema = z.object({
   ),
   documentId: z.preprocess(getSearchParamList, z.array(z.string())),
   artifactId: z.preprocess(getSearchParamList, z.array(z.string())),
+  marketDongCode: z.preprocess(getSearchParamList, z.array(z.string())),
+  onboardingResultCode: z.preprocess(
+    (value) => getSearchParamList(value)[0],
+    z.string().optional()
+  ),
+  onboardingCategoryCode: z.preprocess(
+    (value) => getSearchParamList(value)[0],
+    z.string().optional()
+  ),
 })
 
 type ChatThreadPageProps = {
@@ -42,6 +51,9 @@ export default async function ChatThreadPage(props: ChatThreadPageProps) {
         starter: undefined,
         documentId: [],
         artifactId: [],
+        marketDongCode: [],
+        onboardingResultCode: undefined,
+        onboardingCategoryCode: undefined,
       }
 
   return (
@@ -51,6 +63,15 @@ export default async function ChatThreadPage(props: ChatThreadPageProps) {
       starterSelections={{
         selectedArtifactIds: starterPayload.artifactId,
         selectedDocumentIds: starterPayload.documentId,
+        selectedMarketDongCodes: starterPayload.marketDongCode,
+        selectedOnboarding: starterPayload.onboardingResultCode
+          ? {
+              resultCode: starterPayload.onboardingResultCode,
+              profileName: starterPayload.onboardingResultCode,
+              selectedCategoryCode:
+                starterPayload.onboardingCategoryCode ?? null,
+            }
+          : null,
       }}
     />
   )

@@ -20,6 +20,9 @@ def test_workspace_read_tools_are_allowed_by_default() -> None:
         "web_search",
         "web_fetch",
         "market_search_areas",
+        "market_list_industries",
+        "market_get_dong_report",
+        "franchise_search_brands",
         "onboarding_get_default_profile",
         "onboarding_get_survey_result",
         "onboarding_get_area_recommendations",
@@ -210,3 +213,154 @@ async def test_market_search_tool_with_empty_keyword_returns_silent_error() -> N
     assert result["type"] == "map_area_search_results"
     assert result["success"] is False
     assert result["areas"] == []
+
+
+@pytest.mark.asyncio
+async def test_market_list_industries_filters_by_korean_alias() -> None:
+    """업종 코드북 도구는 자연어 업종명을 industryCode 후보로 바꿔준다."""
+
+    from agent.services.chat.tools.market_tool import market_tool as module
+
+    result = await module.market_list_industries.ainvoke({"query": "카페"})
+
+    assert result["type"] == "market_industry_codebook"
+    assert result["success"] is True
+    assert result["matchedCount"] >= 1
+    first_category = result["categories"][0]
+    assert first_category["categoryName"] == "외식"
+    assert first_category["industries"][0]["industryCode"] == "CS100010"
+    assert "franchise_search_brands" in result["usage"][1]
+
+
+@pytest.mark.asyncio
+async def test_market_get_dong_report_returns_korean_meaning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """상권 상세 도구는 원본 리포트를 한국어 의미가 붙은 구조로 정리한다."""
+
+    from agent.services.chat.tools.market_tool import market_tool as module
+
+    class FakeMarketClient:
+        async def get_dong_report(self, *, dong_code: str, period: str) -> dict[str, object]:
+            assert dong_code == "11200650"
+            assert period == "latest"
+            return {
+                "dong": {
+                    "dongCode": "11200650",
+                    "dongName": "성수1가1동",
+                    "sigunguName": "성동구",
+                },
+                "period": {"periodKey": "20261", "year": 2026, "quarter": 1},
+                "floatingPopulation": {
+                    "total": 1000,
+                    "peakTimeSlot": "17-21",
+                    "youngAdultRatio": 42.5,
+                },
+                "residentPopulation": {"total": 500},
+                "sales": {
+                    "totalSalesAmount": 1000000,
+                    "industryRankings": [
+                        {
+                            "rank": 1,
+                            "industryCode": "CS100010",
+                            "industryName": "커피-음료",
+                            "estimatedSalesAmount": 900000,
+                        }
+                    ],
+                },
+                "stores": {"totalStores": 12, "franchiseStores": 3},
+                "tradeAreaChange": {
+                    "changeIndex": "LL",
+                    "changeIndexName": "다이나믹",
+                    "displayDescription": "변화 가능성이 큰 상권입니다.",
+                },
+                "dataQuality": {
+                    "availableSections": ["sales"],
+                    "missingSections": [],
+                    "note": "테스트",
+                },
+                "franchiseRecommendations": [
+                    {
+                        "brandCode": "brand-1",
+                        "brandName": "예시카페",
+                        "estimatedSalesAmount": 12340,
+                        "startupCostTotal": 5600,
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(module, "market_service_client", FakeMarketClient())
+
+    result = await module.market_get_dong_report.ainvoke({"dongCode": "11200650"})
+
+    assert result["type"] == "market_dong_report"
+    assert result["success"] is True
+    assert result["dong"]["dongName"] == "성수1가1동"
+    assert result["period"]["text"] == "2026년 1분기"
+    assert result["sales"]["topIndustryCodeForFranchiseSearch"] == "CS100010"
+    assert "프랜차이즈" in result["nextActions"][0]
+
+
+@pytest.mark.asyncio
+async def test_franchise_search_brands_returns_normalized_units(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """프랜차이즈 도구는 천원 단위 원천값을 만원 의미 구조로 변환한다."""
+
+    from agent.services.chat.tools.market_tool import market_tool as module
+
+    class FakeFranchiseClient:
+        async def get_franchises(
+            self,
+            *,
+            industry_code: str | None,
+            size: int,
+        ) -> dict[str, object]:
+            assert industry_code == "CS100010"
+            assert size == 2
+            return {
+                "items": [
+                    {
+                        "brandCode": "brand-1",
+                        "brandName": "예시카페",
+                        "companyName": "예시컴퍼니",
+                        "industryName": "커피-음료",
+                        "ftcIndustryName": "커피",
+                        "baseYear": 2025,
+                        "startupCost": {
+                            "totalAmount": 10000,
+                            "franchiseFee": 1000,
+                            "educationFee": 500,
+                            "etcAmount": 8000,
+                            "deposit": 500,
+                        },
+                        "sales": {
+                            "averageSalesAmount": 20000,
+                            "areaUnitAverageSalesAmount": 300,
+                            "franchiseCount": 7,
+                        },
+                    }
+                ]
+            }
+
+    monkeypatch.setattr(module, "franchise_service_client", FakeFranchiseClient())
+
+    result = await module.franchise_search_brands.ainvoke({"industryCode": "CS100010", "size": 2})
+
+    assert result["type"] == "franchise_brand_search_results"
+    assert result["success"] is True
+    assert result["items"][0]["startupCost"]["totalAmount"]["text"] == "1,000만원"
+    assert result["items"][0]["sales"]["averageSalesAmount"]["text"] == "2,000만원"
+
+
+@pytest.mark.asyncio
+async def test_franchise_search_brands_guides_invalid_industry_code() -> None:
+    """잘못된 업종 코드는 예외 대신 코드북 확인 안내를 반환한다."""
+
+    from agent.services.chat.tools.market_tool import market_tool as module
+
+    result = await module.franchise_search_brands.ainvoke({"industryCode": "WRONG", "size": 2})
+
+    assert result["type"] == "franchise_brand_search_results"
+    assert result["success"] is False
+    assert "market_list_industries" in result["nextActions"][0]

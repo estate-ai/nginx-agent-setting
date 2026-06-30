@@ -45,6 +45,7 @@ import type { ChatRightPanel } from "@/features/chat/types/workspace"
 import type {
   ArtifactResponse,
   DocumentResponse,
+  MarketFavoriteResponse,
 } from "@/shared/api/generated/agent/schemas"
 import { Badge } from "@/shared/components/ui/badge"
 import { Button } from "@/shared/components/ui/button"
@@ -66,6 +67,7 @@ type ChatViewProps = {
   activeThreadTitle: string
   artifacts: ArtifactResponse[]
   documents: DocumentResponse[]
+  marketFavorites?: MarketFavoriteResponse[]
   hasOnboardingContext?: boolean
   isOnboardingContextRemoving?: boolean
   isRightPanelOpen: boolean
@@ -81,6 +83,7 @@ export function ChatView({
   activeThreadTitle,
   artifacts,
   documents,
+  marketFavorites = [],
   hasOnboardingContext = false,
   isOnboardingContextRemoving = false,
   isRightPanelOpen,
@@ -114,6 +117,12 @@ export function ChatView({
   const selectedDocumentIds = useChatWorkspace(
     (state) => state.selectedDocumentIds
   )
+  const selectedMarketDongCodes = useChatWorkspace(
+    (state) => state.selectedMarketDongCodes
+  )
+  const selectedOnboarding = useChatWorkspace(
+    (state) => state.selectedOnboarding
+  )
   const { viewportRef, onScroll, scrollToBottom } = useAutoScroll()
   const disabled = isBusy || isHydrating || hitlInterrupts.length > 0
   const isSendDisabled =
@@ -141,6 +150,8 @@ export function ChatView({
     return submitMessage(message, {
       selectedArtifactIds,
       selectedDocumentIds,
+      selectedMarketDongCodes,
+      selectedOnboarding,
     })
   }
 
@@ -304,6 +315,7 @@ export function ChatView({
         <ChatWorkspaceComposer
           artifacts={artifacts}
           documents={documents}
+          marketFavorites={marketFavorites}
           draft={draft}
           disabled={disabled}
           inputDisabled={false}

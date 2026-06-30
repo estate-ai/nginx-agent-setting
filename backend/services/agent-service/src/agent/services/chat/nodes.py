@@ -24,9 +24,8 @@ CHAT_SYSTEM_PROMPT = """
 반드시 지킬 규칙:
 - 모든 턴은 사용자에게 보이는 일반 텍스트 답변을 남깁니다. 빈 답변으로 끝내지 않습니다.
 - "확인해볼게요", "검색해볼게요" 같은 진행 문장만 말하고 턴을 끝내지 않습니다.
-- 사용자가 상권 분석, 상권 분석 리포트, 창업 리포트, 프랜차이즈 비교, 예상 매출·비용·순수익 분석을 요청하면 본격적인 검색 전에 before_research를 적극 호출해 리서치 방법·질문·차트·few-shot 지침을 확인합니다.
-- before_research는 파라미터 없이 호출하며, 사용자에게 물어볼 조건과 web_search 쿼리 분해법, 검색 결과가 부족할 때의 처리법, chart 작성 규칙, 장문 리포트 예시를 반환합니다.
-- 단순 사실 검색이거나 같은 대화에서 이미 before_research 지침을 확인한 직후에는 반복 호출하지 말고 그 지침을 따라 질문·검색·분석을 진행합니다.
+- 평소에는 web_, market_, franchise_ 도구를 적극 활용하다가 사용자가 리포트를 요구하면 before_research를 적극 호출해 리서치 방법·질문·차트·few-shot 지침을 확인합니다.
+- before_research는 파라미터 없이 호출하며, 사용자에게 물어볼 조건과 web_search 쿼리 분해법, 검색 결과가 부족할 때의 처리법, chart 작성 규칙, 장문 리포트 예시를 반환합니다. 이후 장문 리포트는 create_artifact를 통해 반환한 뒤, 사용자에게 요약보고합니다.
 - 요즘, 최신, 최근, 현재, 분위기, 트렌드, 정책, 임대료, 상권 변화가 나오면 최종 답변 전에 검색 도구를 호출합니다.
 - 검색 결과가 비어 있거나 메타서치 오류/한계가 보이면 그 한계를 짧게 말하고, 확인된 맥락과 추정을 구분합니다.
 - 검색 결과가 1개 이상 있으면 답변 끝에 "근거/출처"를 만들고, 도구 결과에 있는 제목과 URL을 2개 이상 적습니다. URL이 없으면 URL을 지어내지 말고 확인 한계로 적습니다.
@@ -103,6 +102,21 @@ DEFAULT_CHAT_TOOL_DESCRIPTIONS = {
         '예: keyword="성수1가1동", keyword="을지로동", keyword="신당동". '
         "결과의 areas는 지도 UI가 표시할 행정동 목록입니다."
     ),
+    "market_list_industries": (
+        "상권분석 업종명과 industryCode 매핑이 필요할 때 사용합니다. 외부 API 호출 없이 "
+        "내부 코드북에서 업종 코드, 업종명, 동의어를 반환합니다. 사용자가 카페, 커피, "
+        "치킨, 편의점처럼 자연어 업종명을 말하면 query로 검색해 정확한 industryCode를 찾습니다."
+    ),
+    "market_get_dong_report": (
+        "행정동 코드(dongCode)로 상권 상세 리포트를 조회합니다. 지역명만 있으면 먼저 "
+        "market_search_areas로 dongCode를 확인합니다. 결과의 업종별 매출 순위 industryCode는 "
+        "franchise_search_brands에 연결할 수 있습니다."
+    ),
+    "franchise_search_brands": (
+        "프랜차이즈 브랜드를 평균매출 높은 순으로 조회합니다. industryCode가 있으면 해당 "
+        "업종만, 없으면 전체 브랜드 상위를 반환합니다. industryCode를 모르면 market_list_industries "
+        "또는 market_get_dong_report의 업종 순위를 먼저 확인합니다."
+    ),
 }
 
 
@@ -116,9 +130,7 @@ def _system_prompt_for_harness(overrides: HarnessOverrides) -> str:
     return overrides.get("system_prompt") or CHAT_SYSTEM_PROMPT
 
 
-def _tools_for_harness(
-    tools: list[BaseTool], overrides: HarnessOverrides
-) -> list[BaseTool]:
+def _tools_for_harness(tools: list[BaseTool], overrides: HarnessOverrides) -> list[BaseTool]:
     tool_descriptions = {
         **DEFAULT_CHAT_TOOL_DESCRIPTIONS,
         **(overrides.get("tool_descriptions") or {}),

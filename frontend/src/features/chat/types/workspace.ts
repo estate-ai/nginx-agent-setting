@@ -7,9 +7,15 @@ import type { HitlInterrupt } from "@/features/chat/types/hitl-interrupt-payload
 import type {
   ArtifactResponse,
   DocumentResponse,
+  MarketFavoriteResponse,
 } from "@/shared/api/generated/agent/schemas"
 
-export type ChatLeftTab = "threads" | "library" | "onboarding" | "memory"
+export type ChatLeftTab =
+  | "threads"
+  | "library"
+  | "onboarding"
+  | "market-favorites"
+  | "memory"
 
 export type ChatOnboardingResultPreview = {
   resultCode: string
@@ -17,6 +23,12 @@ export type ChatOnboardingResultPreview = {
   isDefault: boolean
   savedLabel: string | null
   savedSource: string | null
+  selectedCategoryCode?: string | null
+}
+
+export type ChatOnboardingSelection = {
+  resultCode: string
+  profileName: string
   selectedCategoryCode?: string | null
 }
 
@@ -28,6 +40,10 @@ export type ChatDetailDialogPayload =
   | {
       kind: "onboarding-result"
       result: ChatOnboardingResultPreview
+    }
+  | {
+      kind: "market-favorite"
+      favorite: MarketFavoriteResponse
     }
 
 export type ChatDetailDialogState = ChatDetailDialogPayload & {

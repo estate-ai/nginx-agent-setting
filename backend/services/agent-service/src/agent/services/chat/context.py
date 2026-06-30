@@ -36,6 +36,9 @@ class ChatRuntimeContext(TypedDict, total=False):
     surface: NotRequired[str]
     selected_document_ids: NotRequired[list[str]]
     selected_artifact_ids: NotRequired[list[str]]
+    selected_market_dong_codes: NotRequired[list[str]]
+    selected_onboarding_result_code: NotRequired[str | None]
+    selected_onboarding_category_code: NotRequired[str | None]
     harness_overrides: NotRequired[HarnessOverrides]
 
 
@@ -95,9 +98,7 @@ def resolve_chat_model_context(context: ChatRuntimeContext | None) -> ResolvedCh
     model_card = get_chat_model_card(model)
     reasoning_effort = raw_context.get("reasoning_effort")
     if reasoning_effort not in model_card.supported_reasoning_efforts:
-        raise ValueError(
-            f"unsupported reasoning effort for {model}: {reasoning_effort}"
-        )
+        raise ValueError(f"unsupported reasoning effort for {model}: {reasoning_effort}")
 
     return {
         "model": model,

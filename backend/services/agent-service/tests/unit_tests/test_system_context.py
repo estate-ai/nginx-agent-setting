@@ -6,6 +6,7 @@ from agent.services.chat.system_context import (
     build_system_context,
 )
 from agent.services.chat.system_context_state import (
+    parse_selected_dong_codes,
     parse_selected_ids,
 )
 
@@ -27,6 +28,21 @@ def test_parse_selected_ids_accepts_valid_uuid_list() -> None:
     result = parse_selected_ids([valid_id])
 
     assert [str(item) for item in result] == [valid_id]
+
+
+def test_parse_selected_dong_codes_rejects_invalid_values() -> None:
+    """선택 상권 동 코드는 문자열 목록만 허용한다."""
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        parse_selected_dong_codes(["11230820", ""])
+
+
+def test_parse_selected_dong_codes_deduplicates_values() -> None:
+    """선택 상권 동 코드는 입력 순서를 유지하며 중복을 제거한다."""
+
+    result = parse_selected_dong_codes(["11230820", "11230820", "11230830"])
+
+    assert result == ["11230820", "11230830"]
 
 
 def test_build_system_context_renders_document_metadata_only() -> None:
@@ -138,6 +154,40 @@ def test_build_system_context_renders_memory_and_onboarding_summaries() -> None:
     assert 'selected_category_code="cafe"' in result
     assert "onboarding_get_survey_result" in result
     assert "onboarding_get_area_recommendations" in result
+
+
+def test_build_system_context_renders_market_areas_and_user_memories() -> None:
+    """선택 상권과 사용자 메모리는 system_context에 함께 렌더링된다."""
+
+    result = build_system_context(
+        {
+            "selected_documents": [],
+            "selected_artifacts": [],
+            "selected_market_areas": [
+                {
+                    "dong_code": "11230820",
+                    "dong_name": "역삼1동",
+                }
+            ],
+            "user_memories": [
+                {
+                    "id": "memory-1",
+                    "content": "주말 유동인구가 많은 상권을 선호한다.",
+                    "source": "manual",
+                }
+            ],
+            "memory_summary": {"has_memories": True, "memory_count": 1},
+            "onboarding_summary": None,
+        }
+    )
+
+    assert result is not None
+    assert "<selected_market_areas>" in result
+    assert 'dong_code="11230820"' in result
+    assert 'dong_name="역삼1동"' in result
+    assert "market_get_dong_report" in result
+    assert "<user_memories>" in result
+    assert "주말 유동인구가 많은 상권을 선호한다." in result
 
 
 def test_append_system_context_to_latest_human_message_only_updates_human_message() -> None:

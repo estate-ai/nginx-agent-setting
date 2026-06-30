@@ -55,7 +55,8 @@ export const submitWorkspaceThreadMessage = async ({
     toolPolicy,
     appThreadId,
     selectedDocumentIds ?? [],
-    selectedArtifactIds ?? []
+    selectedArtifactIds ?? [],
+    []
   )
 
   await client.runs.create(langgraphThreadId, CHAT_ASSISTANT_ID, {

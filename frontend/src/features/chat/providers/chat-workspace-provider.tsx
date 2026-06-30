@@ -5,6 +5,7 @@ import { createStore, useStore } from "zustand"
 import type {
   ChatDetailDialogState,
   ChatLeftTab,
+  ChatOnboardingSelection,
 } from "@/features/chat/types/workspace"
 
 type ChatWorkspaceState = {
@@ -13,6 +14,8 @@ type ChatWorkspaceState = {
   isLeftSidebarOpen: boolean
   selectedArtifactIds: string[]
   selectedDocumentIds: string[]
+  selectedMarketDongCodes: string[]
+  selectedOnboarding: ChatOnboardingSelection | null
 }
 
 type ChatWorkspaceActions = {
@@ -22,9 +25,13 @@ type ChatWorkspaceActions = {
   replaceSelections: (next: {
     documentIds: string[]
     artifactIds: string[]
+    marketDongCodes: string[]
+    onboarding: ChatOnboardingSelection | null
   }) => void
   toggleArtifact: (artifactId: string) => void
   toggleDocument: (documentId: string) => void
+  toggleMarketArea: (dongCode: string) => void
+  setSelectedOnboarding: (selection: ChatOnboardingSelection | null) => void
   resetSelections: () => void
 }
 
@@ -43,13 +50,22 @@ const createChatWorkspaceStore = () =>
     isLeftSidebarOpen: true,
     selectedDocumentIds: [],
     selectedArtifactIds: [],
+    selectedMarketDongCodes: [],
+    selectedOnboarding: null,
     setDetailDialog: (detailDialog) => set({ detailDialog }),
     setActiveLeftTab: (activeLeftTab) => set({ activeLeftTab }),
     setIsLeftSidebarOpen: (isLeftSidebarOpen) => set({ isLeftSidebarOpen }),
-    replaceSelections: ({ documentIds, artifactIds }) =>
+    replaceSelections: ({
+      documentIds,
+      artifactIds,
+      marketDongCodes,
+      onboarding,
+    }) =>
       set({
         selectedDocumentIds: documentIds,
         selectedArtifactIds: artifactIds,
+        selectedMarketDongCodes: marketDongCodes,
+        selectedOnboarding: onboarding,
       }),
     toggleArtifact: (artifactId) =>
       set((state) => ({
@@ -59,10 +75,20 @@ const createChatWorkspaceStore = () =>
       set((state) => ({
         selectedDocumentIds: toggleId(state.selectedDocumentIds, documentId),
       })),
+    toggleMarketArea: (dongCode) =>
+      set((state) => ({
+        selectedMarketDongCodes: toggleId(
+          state.selectedMarketDongCodes,
+          dongCode
+        ),
+      })),
+    setSelectedOnboarding: (selectedOnboarding) => set({ selectedOnboarding }),
     resetSelections: () =>
       set({
         selectedArtifactIds: [],
         selectedDocumentIds: [],
+        selectedMarketDongCodes: [],
+        selectedOnboarding: null,
       }),
   }))
 

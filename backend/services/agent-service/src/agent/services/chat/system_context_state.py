@@ -13,6 +13,7 @@ from agent.repositories.workspace import (
     artifact_repository,
     content_repository,
     document_repository,
+    market_favorite_repository,
     memory_repository,
     onboarding_context_repository,
 )
@@ -22,8 +23,10 @@ from agent.services.chat.state import (
     OnboardingSummary,
     SelectedArtifactContextState,
     SelectedDocumentContextState,
+    SelectedMarketAreaContextState,
     SystemContextRefreshState,
     SystemContextState,
+    UserMemoryContextState,
 )
 from agent.services.chat.tools.runtime_user import (
     extract_runtime_value,
@@ -34,6 +37,8 @@ def empty_system_context_state() -> SystemContextState:
     return {
         "selected_documents": [],
         "selected_artifacts": [],
+        "selected_market_areas": [],
+        "user_memories": [],
         "memory_summary": None,
         "onboarding_summary": None,
     }
@@ -60,6 +65,23 @@ def parse_selected_ids(raw_ids: object) -> list[UUID]:
         except ValueError:
             raise ValueError(f"selected id is not a UUID: {raw_id}") from None
     return resolved_ids
+
+
+def parse_selected_dong_codes(raw_codes: object) -> list[str]:
+    """실행 컨텍스트의 선택 행정동 코드 목록을 검증한다."""
+
+    if not isinstance(raw_codes, list):
+        raise ValueError("selected market dong codes must be a list")
+    resolved_codes: list[str] = []
+    for raw_code in raw_codes:
+        if not isinstance(raw_code, str):
+            raise ValueError("selected market dong code must be a string")
+        code = raw_code.strip()
+        if not code:
+            raise ValueError("selected market dong code must not be empty")
+        if code not in resolved_codes:
+            resolved_codes.append(code)
+    return resolved_codes
 
 
 def _runtime_context_mapping(
@@ -144,6 +166,15 @@ def _normalize_client_surface(raw_surface: object) -> str | None:
     return normalized if normalized == "map" else None
 
 
+def _normalize_optional_context_string(raw_value: object) -> str | None:
+    if raw_value is None:
+        return None
+    if not isinstance(raw_value, str):
+        raise ValueError("selected onboarding context value must be a string or null")
+    normalized = raw_value.strip()
+    return normalized or None
+
+
 async def _build_selected_document_states(
     owner: str | None,
     *,
@@ -223,6 +254,36 @@ async def _build_selected_artifact_states(
     ]
 
 
+async def _build_selected_market_area_states(
+    owner: str | None,
+    *,
+    raw_codes: object,
+) -> list[SelectedMarketAreaContextState]:
+    if owner is None:
+        raise ValueError("authenticated user is required for selected market areas")
+    selected_dong_codes = parse_selected_dong_codes(raw_codes)
+    if not selected_dong_codes:
+        return []
+
+    async with get_session_factory()() as session:
+        records = await market_favorite_repository.list_by_dong_codes(
+            session, owner, selected_dong_codes
+        )
+
+    found_codes = {record.dong_code for record in records}
+    missing_codes = set(selected_dong_codes) - found_codes
+    if missing_codes:
+        raise ValueError("selected market areas must belong to the authenticated user")
+
+    return [
+        {
+            "dong_code": record.dong_code,
+            "dong_name": record.dong_name,
+        }
+        for record in records
+    ]
+
+
 async def _build_memory_summary(owner: str | None) -> MemorySummary | None:
     if owner is None:
         return None
@@ -232,6 +293,25 @@ async def _build_memory_summary(owner: str | None) -> MemorySummary | None:
         "has_memories": memory_count > 0,
         "memory_count": memory_count,
     }
+
+
+async def _build_user_memories(
+    owner: str | None,
+    *,
+    limit: int = 10,
+) -> list[UserMemoryContextState]:
+    if owner is None:
+        return []
+    async with get_session_factory()() as session:
+        records = await memory_repository.list(session, owner, enabled_only=True, limit=limit)
+    return [
+        {
+            "id": str(record.id),
+            "content": record.content,
+            "source": record.source,
+        }
+        for record in records
+    ]
 
 
 async def _build_thread_onboarding_summary(
@@ -299,6 +379,24 @@ async def _build_onboarding_summary(
     return summary
 
 
+def _build_selected_onboarding_summary(
+    *,
+    raw_result_code: object,
+    raw_category_code: object,
+) -> OnboardingSummary | None:
+    result_code = _normalize_optional_context_string(raw_result_code)
+    selected_category_code = _normalize_optional_context_string(raw_category_code)
+    if result_code is None:
+        return None
+    return {
+        "has_default_profile": False,
+        "has_thread_context": True,
+        "result_code": result_code,
+        "selected_category_code": selected_category_code,
+        "source": "manual_attach",
+    }
+
+
 async def prepare_system_context_state_update(
     current_system_context: SystemContextState | None,
     current_refresh: SystemContextRefreshState | None,
@@ -315,6 +413,8 @@ async def prepare_system_context_state_update(
         {
             "selected_documents": list(current_system_context["selected_documents"]),
             "selected_artifacts": list(current_system_context["selected_artifacts"]),
+            "selected_market_areas": list(current_system_context.get("selected_market_areas", [])),
+            "user_memories": list(current_system_context.get("user_memories", [])),
             "memory_summary": current_system_context["memory_summary"],
             "onboarding_summary": current_system_context["onboarding_summary"],
         }
@@ -342,6 +442,11 @@ async def prepare_system_context_state_update(
             owner,
             raw_ids=_runtime_context_value(config, context, "selected_artifact_ids"),
         )
+    if _has_runtime_value(config, context, "selected_market_dong_codes"):
+        system_context["selected_market_areas"] = await _build_selected_market_area_states(
+            owner,
+            raw_codes=_runtime_context_value(config, context, "selected_market_dong_codes"),
+        )
 
     if _has_runtime_value(config, context, "surface"):
         client_surface = _normalize_client_surface(
@@ -356,6 +461,7 @@ async def prepare_system_context_state_update(
 
     if current_system_context is None or refresh_state["memory_summary_dirty"]:
         system_context["memory_summary"] = await _build_memory_summary(owner)
+        system_context["user_memories"] = await _build_user_memories(owner)
         refresh_state["memory_summary_dirty"] = False
 
     # 프론트가 thread onboarding context를 API로 직접 바꿀 수 있으므로,
@@ -372,6 +478,18 @@ async def prepare_system_context_state_update(
         ),
     )
     refresh_state["onboarding_summary_dirty"] = False
+
+    if _has_runtime_value(config, context, "selected_onboarding_result_code"):
+        system_context["onboarding_summary"] = _build_selected_onboarding_summary(
+            raw_result_code=_runtime_context_value(
+                config, context, "selected_onboarding_result_code"
+            ),
+            raw_category_code=_runtime_context_value(
+                config, context, "selected_onboarding_category_code"
+            )
+            if _has_runtime_value(config, context, "selected_onboarding_category_code")
+            else None,
+        )
 
     return {
         "system_context": system_context,

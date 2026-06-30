@@ -32,4 +32,5 @@ def test_resolve_chat_model_context_keeps_explicit_effort() -> None:
     assert result == {
         "model": "gpt-oss:120b",
         "reasoning_effort": "low",
+        "harness_overrides": {},
     }

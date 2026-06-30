@@ -9,6 +9,7 @@ import type { ChatRightPanel } from "@/features/chat/types/workspace"
 import type {
   ArtifactResponse,
   DocumentResponse,
+  MarketFavoriteResponse,
 } from "@/shared/api/generated/agent/schemas"
 
 const documents: DocumentResponse[] = [
@@ -41,18 +42,33 @@ const artifacts: ArtifactResponse[] = [
   },
 ]
 
+const marketFavorites: MarketFavoriteResponse[] = [
+  {
+    id: "favorite-1",
+    dong_code: "11230820",
+    dong_name: "역삼1동",
+    created_at: "2026-06-25T00:00:00Z",
+    updated_at: "2026-06-25T00:00:00Z",
+  },
+]
+
 describe("reconcileWorkspaceState", () => {
   it("현재 목록에 없는 선택 항목을 정리한다.", () => {
     const nextSelections = pruneWorkspaceSelections({
       documentIds: ["doc-1", "doc-missing"],
       artifactIds: ["artifact-1", "artifact-missing"],
+      marketDongCodes: ["11230820", "99999999"],
+      onboarding: null,
       documents,
       artifacts,
+      marketFavorites,
     })
 
     expect(nextSelections).toEqual({
       documentIds: ["doc-1"],
       artifactIds: ["artifact-1"],
+      marketDongCodes: ["11230820"],
+      onboarding: null,
     })
   })
 
@@ -154,10 +170,22 @@ describe("reconcileWorkspaceState", () => {
         {
           documentIds: ["doc-1"],
           artifactIds: ["artifact-1"],
+          marketDongCodes: ["11230820"],
+          onboarding: {
+            resultCode: "result-1",
+            profileName: "성향",
+            selectedCategoryCode: "CS100010",
+          },
         },
         {
           documentIds: ["doc-1"],
           artifactIds: ["artifact-1"],
+          marketDongCodes: ["11230820"],
+          onboarding: {
+            resultCode: "result-1",
+            profileName: "성향",
+            selectedCategoryCode: "CS100010",
+          },
         }
       )
     ).toBe(true)
@@ -167,10 +195,14 @@ describe("reconcileWorkspaceState", () => {
         {
           documentIds: ["doc-1"],
           artifactIds: ["artifact-1"],
+          marketDongCodes: ["11230820"],
+          onboarding: null,
         },
         {
           documentIds: [],
           artifactIds: ["artifact-1"],
+          marketDongCodes: ["11230820"],
+          onboarding: null,
         }
       )
     ).toBe(false)

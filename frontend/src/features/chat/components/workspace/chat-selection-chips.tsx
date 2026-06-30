@@ -9,6 +9,7 @@ import { useChatWorkspace } from "@/features/chat/providers/chat-workspace-provi
 import type {
   ArtifactResponse,
   DocumentResponse,
+  MarketFavoriteResponse,
 } from "@/shared/api/generated/agent/schemas"
 import { Badge } from "@/shared/components/ui/badge"
 import { Button } from "@/shared/components/ui/button"
@@ -17,12 +18,14 @@ import { cn } from "@/shared/lib/utils"
 type ChatSelectionChipsProps = {
   artifacts: ArtifactResponse[]
   documents: DocumentResponse[]
+  marketFavorites?: MarketFavoriteResponse[]
   compact?: boolean
 }
 
 export function ChatSelectionChips({
   artifacts,
   documents,
+  marketFavorites = [],
   compact = false,
 }: ChatSelectionChipsProps) {
   const selectedArtifactIds = useChatWorkspace(
@@ -31,8 +34,12 @@ export function ChatSelectionChips({
   const selectedDocumentIds = useChatWorkspace(
     (state) => state.selectedDocumentIds
   )
+  const selectedMarketDongCodes = useChatWorkspace(
+    (state) => state.selectedMarketDongCodes
+  )
   const toggleArtifact = useChatWorkspace((state) => state.toggleArtifact)
   const toggleDocument = useChatWorkspace((state) => state.toggleDocument)
+  const toggleMarketArea = useChatWorkspace((state) => state.toggleMarketArea)
 
   const selectedDocuments = documents.filter((document) =>
     selectedDocumentIds.includes(document.id)
@@ -40,8 +47,15 @@ export function ChatSelectionChips({
   const selectedArtifacts = artifacts.filter((artifact) =>
     selectedArtifactIds.includes(artifact.id)
   )
+  const selectedMarketFavorites = marketFavorites.filter((favorite) =>
+    selectedMarketDongCodes.includes(favorite.dong_code)
+  )
 
-  if (selectedDocuments.length === 0 && selectedArtifacts.length === 0) {
+  if (
+    selectedDocuments.length === 0 &&
+    selectedArtifacts.length === 0 &&
+    selectedMarketFavorites.length === 0
+  ) {
     return null
   }
 
@@ -91,6 +105,28 @@ export function ChatSelectionChips({
           >
             <X className="size-2.5" />
             <span className="sr-only">아티팩트 선택 해제</span>
+          </Button>
+        </Badge>
+      ))}
+
+      {selectedMarketFavorites.map((favorite) => (
+        <Badge
+          key={favorite.dong_code}
+          variant="secondary"
+          className={cn(
+            "min-w-0 gap-1 rounded-md px-2 py-0.5 text-xs",
+            compact && "max-w-full"
+          )}
+        >
+          <span className="min-w-0 truncate">상권 · {favorite.dong_name}</span>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="size-4 rounded-full"
+            onClick={() => toggleMarketArea(favorite.dong_code)}
+          >
+            <X className="size-2.5" />
+            <span className="sr-only">상권 선택 해제</span>
           </Button>
         </Badge>
       ))}

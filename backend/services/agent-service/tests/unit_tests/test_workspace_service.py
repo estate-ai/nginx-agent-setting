@@ -10,6 +10,7 @@ from agent.schemas.workspace import (
     CreateAgentThreadRequest,
     CreateArtifactRequest,
     CreateDocumentRequest,
+    CreateMarketFavoriteRequest,
     CreateMemoryRequest,
     MessageFeedbackRequest,
     SetOnboardingContextRequest,
@@ -47,9 +48,7 @@ def service() -> WorkspaceService:
     return WorkspaceService(FakeAgentServerClient())
 
 
-async def _create_thread(
-    service: WorkspaceService, session: AsyncSession, owner: str
-):
+async def _create_thread(service: WorkspaceService, session: AsyncSession, owner: str):
     return await service.create_thread(
         session,
         owner=owner,
@@ -109,6 +108,53 @@ async def test_memory_soft_delete_hides_record(
     await service.delete_memory(session, owner="user-a", memory_id=memory.id)
 
     assert await service.list_memories(session, "user-a") == []
+
+
+async def test_market_favorite_upsert_and_delete_are_scoped_by_owner(
+    service: WorkspaceService, session: AsyncSession
+) -> None:
+    """상권 좋아요는 사용자별로 격리되고 같은 동 코드는 하나의 row로 갱신된다."""
+
+    favorite = await service.upsert_market_favorite(
+        session,
+        owner="user-a",
+        request=CreateMarketFavoriteRequest(
+            dong_code="11230820",
+            dong_name="역삼1동",
+        ),
+    )
+    updated = await service.upsert_market_favorite(
+        session,
+        owner="user-a",
+        request=CreateMarketFavoriteRequest(
+            dong_code="11230820",
+            dong_name="역삼일동",
+        ),
+    )
+    await service.upsert_market_favorite(
+        session,
+        owner="user-b",
+        request=CreateMarketFavoriteRequest(
+            dong_code="11230820",
+            dong_name="역삼1동",
+        ),
+    )
+
+    own_favorites = await service.list_market_favorites(session, "user-a")
+    other_favorites = await service.list_market_favorites(session, "user-b")
+
+    assert updated.id == favorite.id
+    assert own_favorites[0].dong_name == "역삼일동"
+    assert len(own_favorites) == 1
+    assert len(other_favorites) == 1
+    assert other_favorites[0].id != favorite.id
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.delete_market_favorite(session, owner="user-b", dong_code="99999999")
+    assert exc_info.value.status_code == 404
+
+    await service.delete_market_favorite(session, owner="user-a", dong_code="11230820")
+    assert await service.list_market_favorites(session, "user-a") == []
 
 
 async def test_artifact_update_increments_version_only_for_content(
@@ -278,7 +324,5 @@ async def test_onboarding_context_replaces_result_code_and_keeps_owner_boundary(
 
     assert updated.result_code == "result-b"
     with pytest.raises(HTTPException) as exc_info:
-        await service.get_onboarding_context(
-            session, owner="user-b", thread_id=thread.id
-        )
+        await service.get_onboarding_context(session, owner="user-b", thread_id=thread.id)
     assert exc_info.value.status_code == 404

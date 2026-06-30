@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     agent_server_internal_url: str = "http://127.0.0.1:2024"
     onboarding_service_url: str = "http://onboarding-service:8000"
     market_service_url: str = "http://market-service:8080"
+    franchise_service_url: str = "http://franchise-service:8080"
     searxng_search_url: str = "https://metasearch.jongchoi.com/search"
     searxng_api_key: str | None = None
     service_request_timeout_seconds: float = 10.0

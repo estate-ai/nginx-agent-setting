@@ -78,6 +78,23 @@ class MemoryListResponse(BaseModel):
     memories: list[MemoryResponse]
 
 
+class MarketFavoriteResponse(WorkspaceModel):
+    id: UUID
+    dong_code: str
+    dong_name: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class MarketFavoriteListResponse(BaseModel):
+    favorites: list[MarketFavoriteResponse]
+
+
+class CreateMarketFavoriteRequest(BaseModel):
+    dong_code: str = Field(min_length=1, max_length=32)
+    dong_name: str = Field(min_length=1, max_length=120)
+
+
 class CreateMemoryRequest(BaseModel):
     content: str = Field(min_length=1, max_length=4000)
 
