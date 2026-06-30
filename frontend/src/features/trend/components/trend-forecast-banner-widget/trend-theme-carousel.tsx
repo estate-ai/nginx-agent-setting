@@ -183,7 +183,7 @@ export function TrendBannerBlock({
       <Carousel
         setApi={setApi}
         opts={{ loop: true, align: "start" }}
-        className="relative px-10"
+        className="relative px-8 sm:px-10"
       >
         <CarouselContent className="py-5">
           {themes.map((theme) => (
@@ -197,10 +197,10 @@ export function TrendBannerBlock({
                   return (
                     <Card
                       key={metric.label}
-                      className="min-h-40 justify-between border-white/20 bg-white text-neutral-950 shadow-[0_24px_54px_rgb(15_23_42/0.30)] transition-[border-color,box-shadow] ring-inset hover:border-border"
+                      className="min-h-40 justify-between border-white/20 bg-white p-5 text-neutral-950 shadow-[0_24px_54px_rgb(15_23_42/0.30)] transition-[border-color,box-shadow] ring-inset hover:border-border sm:p-6"
                     >
                       <CardHeader className="gap-2 p-0">
-                        <CardTitle className="pr-8 text-lg leading-snug font-semibold tracking-tight break-keep sm:text-xl">
+                        <CardTitle className="text-lg leading-snug font-semibold tracking-tight break-keep sm:text-xl">
                           {metric.label}
                         </CardTitle>
                         {cardLabel && (
@@ -211,7 +211,7 @@ export function TrendBannerBlock({
                           </CardDescription>
                         )}
                       </CardHeader>
-                      <CardFooter className="min-w-0 items-start gap-1.5 text-xs leading-relaxed text-neutral-600">
+                      <CardFooter className="min-w-0 items-start gap-1.5 p-0 pt-5 text-xs leading-relaxed text-neutral-600">
                         <FooterIcon className="mt-0.5 size-3.5 shrink-0" />
                         <span className="break-keep">{description}</span>
                       </CardFooter>
