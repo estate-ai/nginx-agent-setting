@@ -25,11 +25,13 @@ class ChatModelCard:
     object: str = "model"
 ```
 
-`ChatModelProvider`는 `ollama`, `google`, `opencode_zen`, `openrouter`만 받는다.
+`ChatModelProvider`는 `ollama`, `cerebras`, `google`, `opencode_zen`, `openrouter`를 받는다.
 
 ```text
 gpt-oss:120b
   1. ollama -> gpt-oss:120b
+  2. openrouter -> openai/gpt-oss-120b
+  3. cerebras -> gpt-oss-120b
   supported_reasoning_efforts: none, low, medium, high
   default_reasoning_effort: medium
 

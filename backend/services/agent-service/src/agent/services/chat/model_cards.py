@@ -49,6 +49,11 @@ CHAT_MODEL_CARDS: tuple[ChatModelCard, ...] = (
                 context_window=128000,
             ),
             ChatModelRoute(
+                provider="openrouter",
+                langchain_model="openai/gpt-oss-120b",
+                context_window=131072,
+            ),
+            ChatModelRoute(
                 provider="cerebras",
                 langchain_model="gpt-oss-120b",
                 context_window=128000,

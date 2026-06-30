@@ -1,3 +1,5 @@
+from json import dumps
+
 from langchain_core.tools import tool
 
 from agent.services.chat.approvals.schemas import ApprovalDecisionType
@@ -8,13 +10,14 @@ DECISIONS: list[ApprovalDecisionType] = ["approve", "edit", "reject", "respond"]
 
 BEFORE_RESEARCH_RESPONSE = """
 당신은 지금부터 상권·창업 리서치와 커머셜 리포트를 준비합니다.
-이 도구 결과는 사용자에게 그대로 복붙하기 위한 답변이 아니라, 본격적인 질문·검색·분석·차트 작성 전에 AI가 확인해야 하는 내부 리서치 가이드입니다.
-꼭 web_search, web_fetch 등 web_, market_, franchise_ 도구들을 적극적으로 활용해야 합니다. 다만 web_, market_, franchise_ 호출 횟수 모두 합쳐 15번 안쪽으로 호출하도록 합니다.
-사용자에게 질문을 여러번 반복하지 않습니다. 사용자의 응답이 구체적이지 않더라도 바로 조사에 들어갑니다.
-리서치 결과는 채팅에 말하는 것이 아닌 create_document 도구의 type: commercial_report 또는 type: markdown 으로 생성하면 됩니다.
+이 도구 결과는 사용자에게 그대로 복붙하기 위한 답변이 아니라, 본격적인 질문·검색·분석·차트 작성 전에 AI가 확인해야 하는 내부 리서치 가이드입니다. market_, franchise_ 를 호출한 뒤 artifact_create로 리포트를 만드는 것이 당신의 목적입니다.
+이제 이 도구는 다시 앞으로 호출하지 않고 앞으로 web_search, web_fetch 등 web_, market_, franchise_ 도구들을 적극적으로 활용해야 합니다. 다만 web_, market_, franchise_ 호출 횟수 모두 합쳐 15번 안쪽으로 호출하도록 합니다. artifact_create는 15번의 도구호출 이후에도 할 수 있습니다.
+사용자에게 필수적으로 한 번의 질문을 하되 사용자에게 질문을 여러번 반복하지 않습니다. 사용자의 응답이 구체적이지 않더라도 바로 조사에 들어갑니다.
+리서치 결과는 채팅에 말하는 것이 아닌 artifact_create 도구의 artifact_type: commercial_report 또는 artifact_type: markdown 으로 생성하면 됩니다. 
 
 핵심 목적:
-- 꼭 web_search, web_fetch 를 적극적으로 활용해야 합니다. 그리고 정보를 충분히 모은 후 아래 예시와 같은 커머셜 리포트 타입의 아티팩트를 만드는 것이 목적입니다.
+- 반드시 리서치 이전에 1번의 질문으로 구체화하며, 리서치 결과는 일반 응답이 아닌 artifact_create 를 사용해서 결과물로 반환하고 일반 응답은 리서치 요약을 말합니다.  
+- 꼭 market_, franchise_ 도구를 적극 활용해야 합니다. 해당 도구들로 호출 후 부족함이 있으면 web_search, web_fetch도 활용합니다. 정보를 충분히 모은 후 아래 예시와 같은 커머셜 리포트 타입의 아티팩트를 artifact_create 하는 것이 목적입니다.
 - 사용자가 상권 분석, 상권 분석 리포트, 창업 리포트, 프랜차이즈 비교, 예상 매출·비용·월 순수익 분석, 검색 기반 리포트를 요청하면 먼저 필요한 조건을 확인합니다.
 - 조건이 충분하지 않으면 바로 검색하지 말고 사용자에게 객관적인 질문을 짧게 던집니다.
 - 사용자가 일부만 답하거나 바로 진행을 원하면 부족한 값은 보수적으로 가정하고, 그 가정을 명시한 뒤 리서치를 진행합니다.
@@ -161,8 +164,9 @@ pie 예시:
 - title, xKey, nameKey, dataKey는 문자열이어야 합니다.
 - data는 비어 있으면 안 됩니다.
 - 숫자가 확실하지 않으면 제목이나 본문에 "추정"이라고 표시합니다.
+""".strip()
 
-few-shot 예시:
+_FEW_SHOT_REPORT_RAW_TEXT = """
 # 성동구 카페 창업 커머셜 리포트
 
 ## 1. 핵심 판단 요약
@@ -330,6 +334,21 @@ few-shot 예시:
 ```
 """.strip()
 
+_FEW_SHOT_ARTIFACT_CREATE_PAYLOAD = dumps(
+    {
+        "artifact_type": "commercial_report",
+        "title": "성동구 카페 창업 커머셜 리포트",
+        "raw_text": _FEW_SHOT_REPORT_RAW_TEXT.strip(),
+    },
+    ensure_ascii=False,
+    indent=2,
+)
+BEFORE_RESEARCH_RESPONSE = (
+    BEFORE_RESEARCH_RESPONSE.rstrip()
+    + "\n\nfew-shot 예시 (artifact_create 호출 예시): \n"
+    + _FEW_SHOT_ARTIFACT_CREATE_PAYLOAD
+)
+
 
 @tool
 def before_research() -> str:
@@ -337,7 +356,8 @@ def before_research() -> str:
 
     상권 분석, 창업 리포트, 프랜차이즈 비교, 예상 매출·비용·월 순수익 분석처럼
     본격적인 웹 검색과 보고서 작성 전에 파라미터 없이 호출합니다.
-    사용자 질문, web_search 전략, chart 규칙, 장문 few-shot을 확인하는 용도입니다.
+    사용자 질문, web_search 전략, chart 규칙, 장문 few-shot 도구 호출 인자를 확인하는 용도입니다.
+    artifact_create 사용법을 알게 됩니다.
     """
 
     return BEFORE_RESEARCH_RESPONSE

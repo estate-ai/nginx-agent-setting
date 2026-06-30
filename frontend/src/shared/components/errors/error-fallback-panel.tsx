@@ -22,7 +22,7 @@ type ErrorFallbackPanelProps = {
 
 export function ErrorFallbackPanel({
   title,
-  description = "잠시 후 다시 시도하거나 홈으로 이동해 주세요.",
+  description = "로그인 후 다시 시도하거나 홈으로 이동해 주세요.",
   retryLabel = "재시도",
   homeLabel = "홈으로",
   onRetry,
