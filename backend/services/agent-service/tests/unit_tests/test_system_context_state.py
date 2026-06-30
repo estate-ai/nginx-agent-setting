@@ -368,6 +368,21 @@ async def test_prepare_system_context_state_ignores_configurable_auth_user() -> 
 
 
 @pytest.mark.asyncio
+async def test_prepare_system_context_state_reads_map_surface() -> None:
+    """지도 화면에서 보낸 surface는 system_context에 저장된다."""
+
+    result = await prepare_system_context_state_update(
+        None,
+        None,
+        config={},
+        context={"surface": "map"},
+        server_user=None,
+    )
+
+    assert result["system_context"]["client_surface"] == "map"
+
+
+@pytest.mark.asyncio
 async def test_prepare_system_context_state_reflects_frontend_onboarding_context_changes_without_dirty_flag(
     session_factory: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
 ) -> None:

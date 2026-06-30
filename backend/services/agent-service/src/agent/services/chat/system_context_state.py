@@ -137,6 +137,13 @@ def _has_runtime_value(
     return configurable is not None and key in configurable
 
 
+def _normalize_client_surface(raw_surface: object) -> str | None:
+    if not isinstance(raw_surface, str):
+        return None
+    normalized = raw_surface.strip().lower()
+    return normalized if normalized == "map" else None
+
+
 async def _build_selected_document_states(
     owner: str | None,
     *,
@@ -314,6 +321,8 @@ async def prepare_system_context_state_update(
         if current_system_context is not None
         else empty_system_context_state()
     )
+    if current_system_context is not None and "client_surface" in current_system_context:
+        system_context["client_surface"] = current_system_context["client_surface"]
     refresh_state = (
         {
             "memory_summary_dirty": current_refresh["memory_summary_dirty"],
@@ -333,6 +342,17 @@ async def prepare_system_context_state_update(
             owner,
             raw_ids=_runtime_context_value(config, context, "selected_artifact_ids"),
         )
+
+    if _has_runtime_value(config, context, "surface"):
+        client_surface = _normalize_client_surface(
+            _runtime_context_value(config, context, "surface")
+        )
+        if client_surface is None:
+            system_context.pop("client_surface", None)
+        else:
+            system_context["client_surface"] = client_surface
+    else:
+        system_context.pop("client_surface", None)
 
     if current_system_context is None or refresh_state["memory_summary_dirty"]:
         system_context["memory_summary"] = await _build_memory_summary(owner)

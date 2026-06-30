@@ -39,6 +39,7 @@ class SystemContextState(TypedDict):
     selected_artifacts: list[SelectedArtifactContextState]
     memory_summary: MemorySummary | None
     onboarding_summary: OnboardingSummary | None
+    client_surface: NotRequired[str]
 
 
 class SystemContextRefreshState(TypedDict):

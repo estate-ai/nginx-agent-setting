@@ -56,6 +56,35 @@ def test_build_system_context_renders_document_metadata_only() -> None:
     assert "raw_text" not in result
 
 
+def test_build_system_context_always_renders_current_datetime() -> None:
+    """선택 컨텍스트가 없어도 현재 날짜와 시간이 system_context에 포함된다."""
+
+    result = build_system_context(None)
+
+    assert result is not None
+    assert "<current_datetime" in result
+    assert 'timezone="Asia/Seoul"' in result
+    assert 'utc_iso="' in result
+
+
+def test_build_system_context_renders_map_surface_instruction() -> None:
+    """지도 화면에서 들어온 run에는 지도 도구 호출 지시를 포함한다."""
+
+    result = build_system_context(
+        {
+            "selected_documents": [],
+            "selected_artifacts": [],
+            "memory_summary": None,
+            "onboarding_summary": None,
+            "client_surface": "map",
+        }
+    )
+
+    assert result is not None
+    assert '<client_surface name="map">' in result
+    assert "---- 도구를 최소 2번 이상 호출합니다" in result
+
+
 def test_build_system_context_renders_artifact_metadata_only() -> None:
     result = build_system_context(
         {

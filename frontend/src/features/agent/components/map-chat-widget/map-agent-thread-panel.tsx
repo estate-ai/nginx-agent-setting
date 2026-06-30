@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
+import { ToolMessage } from "@langchain/core/messages"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { HttpStatusError } from "@/features/auth/lib/fetch-with-auth"
 import { ChatView } from "@/features/chat/components/workspace/chat-view"
@@ -18,6 +19,9 @@ import { useChatWorkspace } from "@/features/chat/providers/chat-workspace-provi
 import type { ChatReasoningEffort } from "@/features/chat/types/chat-model-selection"
 import type { ChatRightPanel } from "@/features/chat/types/workspace"
 import { MapChatOverlayPanel } from "@/features/agent/components/map-chat-widget/map-chat-overlay-panel"
+import { parseMapAreaSearchToolResult } from "@/features/agent/lib/map-area-tool-result"
+import { mapQueryKeys } from "@/features/map/lib/map-query-options"
+import { useMapStore } from "@/features/map/store/map-store"
 import {
   getListArtifactsApiV1AgentArtifactsGetQueryKey,
   useListArtifactsApiV1AgentArtifactsGet,
@@ -44,6 +48,9 @@ type MapAgentThreadPanelProps = {
   starterMessage: string | null
   onStarterSubmitted: () => void
 }
+
+const MAP_RUNTIME_CONTEXT = { surface: "map" } as const
+const MAP_SEARCH_TOOL_NAME = "market_search_areas"
 
 function MapAgentThreadStarter({
   starterMessage,
@@ -118,6 +125,31 @@ export function MapAgentThreadPanel({
     tools: toolsQuery.data ?? [],
     models: modelsQuery.data ?? [],
   })
+  const mapToolPolicy = useMemo(() => {
+    const toolPolicy = runtimeSettings.controls?.toolPolicy
+    const hasMapSearchTool = (toolsQuery.data ?? []).some(
+      (tool) => tool.name === MAP_SEARCH_TOOL_NAME
+    )
+
+    if (!toolPolicy || !hasMapSearchTool) {
+      return toolPolicy
+    }
+
+    const allowedToolNames = new Set(toolPolicy.allowedToolNames)
+    allowedToolNames.add(MAP_SEARCH_TOOL_NAME)
+
+    return {
+      ...toolPolicy,
+      allowedToolNames,
+      allowedTools: toolPolicy.allowedTools.includes(MAP_SEARCH_TOOL_NAME)
+        ? toolPolicy.allowedTools
+        : [...toolPolicy.allowedTools, MAP_SEARCH_TOOL_NAME],
+      interruptOn: {
+        ...toolPolicy.interruptOn,
+        [MAP_SEARCH_TOOL_NAME]: false,
+      },
+    }
+  }, [runtimeSettings.controls?.toolPolicy, toolsQuery.data])
 
   if (
     toolsQuery.isLoading ||
@@ -145,7 +177,8 @@ export function MapAgentThreadPanel({
       tools={toolsQuery.data ?? []}
       models={modelsQuery.data ?? []}
       modelSelection={runtimeSettings.controls.modelSelection}
-      toolPolicy={runtimeSettings.controls.toolPolicy}
+      runtimeContext={MAP_RUNTIME_CONTEXT}
+      toolPolicy={mapToolPolicy ?? runtimeSettings.controls.toolPolicy}
       workspaceThread={{
         appThreadId: thread.id,
         langgraphThreadId: thread.langgraph_thread_id,
@@ -166,7 +199,11 @@ function MapAgentThreadContent({
   onStarterSubmitted,
 }: MapAgentThreadPanelProps) {
   const queryClient = useQueryClient()
-  const { resume, toolCalls } = useLangGraphChatStream()
+  const { messages, resume, toolCalls } = useLangGraphChatStream()
+  const executeTextSearch = useMapStore((state) => state.executeTextSearch)
+  const focusMapOnDong = useMapStore((state) => state.focusMapOnDong)
+  const selectDong = useMapStore((state) => state.selectDong)
+  const setSelectedIndustry = useMapStore((state) => state.setSelectedIndustry)
   const replaceSelections = useChatWorkspace((state) => state.replaceSelections)
   const resetSelections = useChatWorkspace((state) => state.resetSelections)
   const selectedArtifactIds = useChatWorkspace(
@@ -210,6 +247,7 @@ function MapAgentThreadContent({
   })
   const previousThreadIdRef = useRef<string | null>(null)
   const processedMutationToolCallIdsRef = useRef<Set<string>>(new Set())
+  const processedMapToolCallIdsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     if (previousThreadIdRef.current === thread.id) {
@@ -218,9 +256,66 @@ function MapAgentThreadContent({
 
     previousThreadIdRef.current = thread.id
     processedMutationToolCallIdsRef.current = new Set()
+    processedMapToolCallIdsRef.current = new Set()
     resetSelections()
     setRightPanel(null)
   }, [resetSelections, thread.id])
+
+  useEffect(() => {
+    try {
+      for (const message of messages) {
+        if (!ToolMessage.isInstance(message)) {
+          continue
+        }
+
+        const toolCallId = message.tool_call_id
+        if (
+          typeof toolCallId !== "string" ||
+          processedMapToolCallIdsRef.current.has(toolCallId)
+        ) {
+          continue
+        }
+
+        const result = parseMapAreaSearchToolResult(message.text)
+        if (!result) {
+          continue
+        }
+
+        processedMapToolCallIdsRef.current.add(toolCallId)
+
+        const keyword = result.keyword ?? ""
+        const industryCode = result.industryCode
+        const params = {
+          industryCode,
+          keyword: keyword || undefined,
+        }
+
+        queryClient.setQueryData(mapQueryKeys.areaSearch(params), {
+          areas: result.areas,
+          keyword,
+        })
+        if (industryCode) {
+          setSelectedIndustry("all", industryCode)
+        }
+        executeTextSearch(keyword)
+
+        const firstArea = result.areas[0]
+        if (firstArea) {
+          selectDong(firstArea.dongCode)
+          focusMapOnDong(firstArea.dongCode)
+        }
+      }
+    } catch (error) {
+      console.error("지도 검색 도구 결과를 반영하지 못했습니다.", error)
+    }
+  }, [
+    executeTextSearch,
+    focusMapOnDong,
+    messages,
+    queryClient,
+    selectDong,
+    setSelectedIndustry,
+  ])
 
   useEffect(() => {
     if (!documentsQuery.data || !artifactsQuery.data) {

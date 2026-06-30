@@ -23,6 +23,7 @@ import type { AssembledToolCall } from "@langchain/langgraph-sdk/stream"
 import { HitlInterruptCard } from "@/features/chat/components/hitl/hitl-interrupt-card"
 import { ArtifactActionButtons } from "@/features/chat/components/workspace/artifact-action-buttons"
 import { ChatWorkspaceComposer } from "@/features/chat/components/workspace/chat-workspace-composer"
+import { MarkdownContentRenderer } from "@/features/chat/components/workspace/markdown-content-renderer"
 import { useAutoScroll } from "@/features/chat/hooks/use-auto-scroll"
 import { useLangGraphChatStream } from "@/features/chat/hooks/use-langgraph-chat-stream"
 import {
@@ -484,8 +485,8 @@ function UserMessageBubble({ message }: { message: BaseMessage }) {
 
 function AssistantTextBlock({ text }: { text: string }) {
   return (
-    <div className="max-w-full rounded-xl rounded-tl-sm bg-muted/30 px-3.5 py-2.5 text-sm leading-[1.7] break-words text-foreground">
-      <p className="whitespace-pre-wrap">{text}</p>
+    <div className="max-w-full rounded-xl rounded-tl-sm bg-muted/30 px-3.5 py-2.5 break-words text-foreground">
+      <MarkdownContentRenderer content={text} />
     </div>
   )
 }

@@ -1,33 +1,43 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime, timezone
 from html import escape
+from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AnyMessage, HumanMessage
 
 from agent.services.chat.state import SystemContextState
 
+_SERVICE_TIMEZONE = ZoneInfo("Asia/Seoul")
+
+
+def _current_datetime_context_line() -> str:
+    now_utc = datetime.now(timezone.utc)
+    now_local = now_utc.astimezone(_SERVICE_TIMEZONE)
+    return (
+        '<current_datetime '
+        f'date="{now_local:%Y-%m-%d}" '
+        f'time="{now_local:%H:%M:%S}" '
+        'timezone="Asia/Seoul" '
+        f'iso="{escape(now_local.isoformat())}" '
+        f'utc_iso="{escape(now_utc.isoformat())}" />'
+    )
+
 
 def build_system_context(system_context_state: SystemContextState | None) -> str | None:
     """세션 스냅샷 상태를 사용자 메시지 하단 XML 블록으로 만든다."""
 
-    if system_context_state is None:
-        return None
+    selected_documents = system_context_state["selected_documents"] if system_context_state else []
+    selected_artifacts = system_context_state["selected_artifacts"] if system_context_state else []
+    memory_summary = system_context_state["memory_summary"] if system_context_state else None
+    onboarding_summary = system_context_state["onboarding_summary"] if system_context_state else None
+    client_surface = system_context_state.get("client_surface") if system_context_state else None
 
-    selected_documents = system_context_state["selected_documents"]
-    selected_artifacts = system_context_state["selected_artifacts"]
-    memory_summary = system_context_state["memory_summary"]
-    onboarding_summary = system_context_state["onboarding_summary"]
+    lines = ["<system_context>", _current_datetime_context_line()]
 
-    if (
-        not selected_documents
-        and not selected_artifacts
-        and memory_summary is None
-        and onboarding_summary is None
-    ):
-        return None
-
-    lines = ["<system_context>"]
+    if client_surface == "map":
+        lines.append('<client_surface name="map">---- 도구를 최소 2번 이상 호출합니다</client_surface>')
 
     if selected_documents:
         lines.append("<selected_documents>")

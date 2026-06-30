@@ -7,8 +7,13 @@ export type LangGraphChatContext = {
   allowed_tools: string[]
   interrupt_on: ToolPolicyState["interruptOn"]
   app_thread_id?: string
+  surface?: "map"
   selected_document_ids?: string[]
   selected_artifact_ids?: string[]
+}
+
+export type LangGraphSubmitContextOptions = {
+  surface?: "map"
 }
 
 export const buildSubmitContext = (
@@ -16,7 +21,8 @@ export const buildSubmitContext = (
   toolPolicy: ToolPolicyState,
   appThreadId?: string,
   selectedDocumentIds?: string[],
-  selectedArtifactIds?: string[]
+  selectedArtifactIds?: string[],
+  options: LangGraphSubmitContextOptions = {}
 ): LangGraphChatContext => ({
   // Protocol V2 submit/respond는 config.configurable을 통해 실행 context를 전달한다.
   model: modelSelection.model,
@@ -24,6 +30,7 @@ export const buildSubmitContext = (
   allowed_tools: toolPolicy.allowedTools,
   interrupt_on: toolPolicy.interruptOn,
   ...(appThreadId ? { app_thread_id: appThreadId } : {}),
+  ...(options.surface ? { surface: options.surface } : {}),
   ...(selectedDocumentIds !== undefined
     ? { selected_document_ids: selectedDocumentIds }
     : {}),

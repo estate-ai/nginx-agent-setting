@@ -1,3 +1,5 @@
+import pytest
+
 from agent.services.chat.toolkits.chat_toolkit import CHAT_TOOL_SPECS_BY_NAME
 from agent.services.chat.approvals.nodes import (
     _handle_chat_tool_error,
@@ -17,6 +19,7 @@ def test_workspace_read_tools_are_allowed_by_default() -> None:
         "document_read",
         "web_search",
         "web_fetch",
+        "market_search_areas",
         "onboarding_get_default_profile",
         "onboarding_get_survey_result",
         "onboarding_get_area_recommendations",
@@ -141,3 +144,70 @@ def test_web_tool_descriptions_explain_visibility_and_result_shape() -> None:
     assert "limit" in web_search.description
     assert "기본 format은 text" in web_fetch.description
     assert "localhost" in web_fetch.description
+
+
+@pytest.mark.asyncio
+async def test_market_search_tool_returns_map_area_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """지도 검색 도구는 market-service 응답을 지도 캐시용 결과로 정규화한다."""
+
+    from agent.services.chat.tools.market_tool import market_tool as module
+
+    class FakeMarketClient:
+        async def search_areas(
+            self,
+            *,
+            keyword: str | None,
+            industry_code: str | None,
+        ) -> dict[str, object]:
+            assert keyword == "성수"
+            assert industry_code == "CS100001"
+            return {
+                "keyword": keyword,
+                "industryCode": industry_code,
+                "industryName": "한식음식점",
+                "areas": [
+                    {
+                        "centerLat": 37.544,
+                        "centerLng": 127.055,
+                        "dongCode": "11200690",
+                        "dongName": "성수2가3동",
+                        "sigunguCode": "11200",
+                        "sigunguName": "성동구",
+                        "industryCode": industry_code,
+                        "industryName": "한식음식점",
+                        "rank": 1,
+                        "estimatedSalesAmount": 123456,
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(module, "market_service_client", FakeMarketClient())
+
+    result = await module.market_search_areas.ainvoke(
+        {
+            "keyword": "성수",
+            "industry_code": "CS100001",
+            "limit": 1,
+        }
+    )
+
+    assert result["type"] == "map_area_search_results"
+    assert result["success"] is True
+    assert result["keyword"] == "성수"
+    assert result["industryCode"] == "CS100001"
+    assert result["areas"][0]["dongCode"] == "11200690"
+
+
+@pytest.mark.asyncio
+async def test_market_search_tool_without_condition_returns_silent_error() -> None:
+    """검색 조건이 없으면 예외 대신 실패 결과를 반환한다."""
+
+    from agent.services.chat.tools.market_tool import market_tool as module
+
+    result = await module.market_search_areas.ainvoke({})
+
+    assert result["type"] == "map_area_search_results"
+    assert result["success"] is False
+    assert result["areas"] == []

@@ -20,6 +20,7 @@ import {
   type QueuedChatMessage,
 } from "@/features/chat/hooks/langgraph-chat-stream-context"
 import { buildSubmitContext } from "@/features/chat/lib/langgraph/build-submit-config"
+import type { LangGraphSubmitContextOptions } from "@/features/chat/lib/langgraph/build-submit-config"
 import { buildSubmitInput } from "@/features/chat/lib/langgraph/build-submit-input"
 import {
   buildAgentApiUrl,
@@ -42,6 +43,7 @@ type LangGraphChatStreamProviderProps = {
   models: LangGraphChatStreamContextValue["models"]
   modelSelection: LangGraphChatStreamContextValue["modelSelection"]
   toolPolicy: LangGraphChatStreamContextValue["toolPolicy"]
+  runtimeContext?: LangGraphSubmitContextOptions
   workspaceThread?: {
     appThreadId: string
     langgraphThreadId: string
@@ -199,6 +201,7 @@ export function LangGraphChatStreamProvider({
   tools,
   models,
   modelSelection,
+  runtimeContext,
   toolPolicy,
   workspaceThread,
 }: LangGraphChatStreamProviderProps) {
@@ -251,7 +254,8 @@ export function LangGraphChatStreamProvider({
         toolPolicy,
         workspaceThread?.appThreadId,
         options.selectedDocumentIds ?? [],
-        options.selectedArtifactIds ?? []
+        options.selectedArtifactIds ?? [],
+        runtimeContext
       )
       const input = buildSubmitInput(content)
 
@@ -267,7 +271,13 @@ export function LangGraphChatStreamProvider({
         throw error
       }
     },
-    [modelSelection, stream, toolPolicy, workspaceThread?.appThreadId]
+    [
+      modelSelection,
+      runtimeContext,
+      stream,
+      toolPolicy,
+      workspaceThread?.appThreadId,
+    ]
   )
 
   const sendMessage = useCallback(
@@ -384,7 +394,10 @@ export function LangGraphChatStreamProvider({
       const context = buildSubmitContext(
         modelSelection,
         toolPolicy,
-        workspaceThread?.appThreadId
+        workspaceThread?.appThreadId,
+        undefined,
+        undefined,
+        runtimeContext
       )
 
       setLocalErrorNotice(null)
@@ -409,7 +422,13 @@ export function LangGraphChatStreamProvider({
         setIsResumePending(false)
       }
     },
-    [modelSelection, stream, toolPolicy, workspaceThread?.appThreadId]
+    [
+      modelSelection,
+      runtimeContext,
+      stream,
+      toolPolicy,
+      workspaceThread?.appThreadId,
+    ]
   )
 
   const resetChat = useCallback(async () => {

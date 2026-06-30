@@ -97,6 +97,11 @@ DEFAULT_CHAT_TOOL_DESCRIPTIONS = {
         "성향 결과 기반 지역 추천을 사용자가 요청하거나 system_context에 연결된 성향 결과가 "
         "있을 때만 사용합니다."
     ),
+    "market_search_areas": (
+        "지도 화면에서 사용자가 지역 검색, 상권 후보 표시, 업종 기준 지역 추천을 요청할 때 "
+        "사용합니다. keyword에는 구/행정동/상권명, industry_code에는 업종 코드를 넣습니다. "
+        "결과의 areas는 지도 UI가 표시할 행정동 목록입니다."
+    ),
 }
 
 
